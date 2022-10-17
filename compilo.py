@@ -5,6 +5,9 @@ exp : SIGNED_NUMBER                                             -> exp_nombre
 | IDENTIFIER                                                    -> exp_var
 | exp OPBIN exp                                                 -> exp_opbin
 | "(" exp ")"                                                   -> exp_par
+| IDENTIFIER"("var_list")"                                      -> exp_appel
+| NULL                                                          -> exp_null
+| "this."IDENTIFIER                                             -> exp_thisPointId
 
 com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "if" "(" exp ")" "{" bcom "}"                                 -> if
@@ -16,10 +19,14 @@ bcom : (com)*
 
 prg : "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"
 
+cls : "class" IDENTIFIER "{" IDENTIFIER "(" var_list ")" "{" bcom "}" "}"                   -> declaration_class
+
 var_list :                                                      -> vide
 | IDENTIFIER ("," IDENTIFIER)*                                  -> aumoinsune
 
 IDENTIFIER : /[a-zA-Z][a-zA-Z0-9]*/
+
+NULL : "NULL"
 
 OPBIN : /[+\-*>]/
 
@@ -27,7 +34,7 @@ OPBIN : /[+\-*>]/
 %import common.SIGNED_NUMBER
 %ignore WS
 """, 
-start="prg")
+start="cls")
 
 tab = "    "
 g = "{"
@@ -175,6 +182,8 @@ def pp_exp(e, ntab = 0):
         return tabulation + e.children[0].value
     elif e.data == "exp_par":
         return f"{tabulation}({pp_exp(e.children[0])})"
+    elif e.data == "exp_null":
+        return "NULL"
     else:
         return f"{tabulation}{pp_exp(e.children[0])} {e.children[1].value} {pp_exp(e.children[2])}"
 
@@ -205,6 +214,9 @@ def pp_bcom(bc, ntab = 0):
 def pp_varlist(l):
     return ", ".join([var.value for var in l.children])
 
+def pp_cls(c, ntab = 0):
+    return f"class {c.children[0]} {g} \n{tab}{c.children[1]}({pp_varlist(c.children[2])}) {g} \n{pp_bcom(c.children[3], ntab + 2)} \n{tab}{d} \n{d}"
+
 def pp_prg(p):
     g = "{"
     d = "}"
@@ -215,16 +227,20 @@ def pp_prg(p):
 #ast = grammaire.parse("main (x, y, z) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} return a;}")
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
-ast = grammaire.parse("""main(x,y){
-    while(x){
-        x = x-1;
-        y=y+1;
+ast = grammaire.parse("""
+class A{
+    A(X,Y,Z){
+        if (X){
+            variable = NULL;
+        }
     }
-    return y;
-} """
-)
+}
+""")
+print(ast)
+print(pp_cls(ast))
 
-asm = asm_prg(ast)
+"""asm = asm_prg(ast)
+
 f = open("ouf.asm", "w")
 f.write(asm)
-f.close()
+f.close()"""
