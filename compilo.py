@@ -230,13 +230,11 @@ def pp_func(f, ntab = 0):
     d = "}"
     nbre_child=len(f.children)
     if nbre_child==3:
-        print(pp_bcom(f.children[2]))
         if(pp_bcom(f.children[2])!=""):
             return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{d}"
         else:
             return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{tabulation}{d}"
     else:
-        print(pp_bcom(f.children[2]))
         if(pp_bcom(f.children[2])!=""):
             return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
         else:
