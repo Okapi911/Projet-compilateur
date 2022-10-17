@@ -208,7 +208,7 @@ def pp_com(c, ntab = 0):
         return f"{tabulation}print({pp_exp(c.children[0])});"
     
     elif c.data == "fonction":
-        return f"{tabulation}{pp_func(c.children[0])}"
+        return f"{tabulation}{pp_func(c.children[0], ntab)}"
 
 def pp_bcom(bc, ntab = 0):
     return "\n".join([pp_com(c, ntab) for c in bc.children])
@@ -225,13 +225,14 @@ def pp_prg(p):
 def pp_name(n):
     return f"{n.children[0]}"
 
-def pp_func(f):
+def pp_func(f, ntab=0):
+    tabulation = ntab * tab
     g = "{"
     d = "}"
     if (len(f.children)==4):
-        return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], 1)} \n    return {pp_exp(f.children[3])}; \n{d}"
+        return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
     else :
-        return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], 1)} \n{d}"
+        return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{d}"
 
 #ast = grammaire.parse("a = a + 1;")
 #ast = grammaire.parse("main (x, y) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} else {a = y;} return a;}")
@@ -240,6 +241,11 @@ def pp_func(f):
 
 
 ast = grammaire.parse("""pomme(x,y){
+    tomate(x,y){
+        x=y-1;
+        return x;
+    }
+    tomato(){}
     while(x){
         x = f(y);
         y=y+1;
