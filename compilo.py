@@ -12,13 +12,14 @@ com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "if" "(" exp ")" "{" bcom "}" "else" "{" bcom "}"             -> if_else
 | "while" "(" exp ")" "{" bcom "}"                              -> while
 | "print" "(" exp ")" ";"                                       -> print
-| func                                                          -> fonction
+
+| func                                                          -> function
 
 bcom : (com)*
 
-func : name "(" var_list ")" "{" bcom  ("return" exp ";")? "}"
+func : name "(" var_list ")" "{" bcom ("return" exp ";")? "}"
 
-prg : "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"
+prg : "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"    -> main
 
 name : IDENTIFIER
 
@@ -207,7 +208,8 @@ def pp_com(c, ntab = 0):
     elif c.data == "print":
         return f"{tabulation}print({pp_exp(c.children[0])});"
     
-    elif c.data == "fonction":
+
+    elif c.data == "function":
         return f"{tabulation}{pp_func(c.children[0], ntab)}"
 
 def pp_bcom(bc, ntab = 0):
@@ -222,23 +224,31 @@ def pp_prg(p):
     return f"main ({pp_varlist(p.children[0])}) {g} \n{pp_bcom(p.children[1], 1)} \n    return {pp_exp(p.children[2])}; \n{d}"
 
 
-def pp_name(n):
-    return f"{n.children[0]}"
-
-def pp_func(f, ntab=0):
+def pp_func(f, ntab = 0):
     tabulation = ntab * tab
     g = "{"
     d = "}"
-    if (len(f.children)==4):
-        return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
-    else :
-        return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{d}"
+    nbre_child=len(f.children)
+    if nbre_child==3:
+        print(pp_bcom(f.children[2]))
+        if(pp_bcom(f.children[2])!=""):
+            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{d}"
+        else:
+            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{tabulation}{d}"
+    else:
+        print(pp_bcom(f.children[2]))
+        if(pp_bcom(f.children[2])!=""):
+            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
+        else:
+            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
+
+def pp_name(n):
+    return f"{n.children[0]}"
 
 #ast = grammaire.parse("a = a + 1;")
 #ast = grammaire.parse("main (x, y) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} else {a = y;} return a;}")
 #ast = grammaire.parse("main (x, y, z) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} return a;}")
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
-
 
 ast = grammaire.parse("""pomme(x,y){
     tomate(x,y){
