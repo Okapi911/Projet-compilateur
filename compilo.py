@@ -12,6 +12,7 @@ com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "if" "(" exp ")" "{" bcom "}" "else" "{" bcom "}"             -> if_else
 | "while" "(" exp ")" "{" bcom "}"                              -> while
 | "print" "(" exp ")" ";"                                       -> print
+| func                                                          -> fonction
 
 bcom : (com)*
 
@@ -205,6 +206,9 @@ def pp_com(c, ntab = 0):
         
     elif c.data == "print":
         return f"{tabulation}print({pp_exp(c.children[0])});"
+    
+    elif c.data == "fonction":
+        return f"{tabulation}{pp_func(c.children[0])}"
 
 def pp_bcom(bc, ntab = 0):
     return "\n".join([pp_com(c, ntab) for c in bc.children])
@@ -217,6 +221,7 @@ def pp_prg(p):
     d = "}"
     return f"main ({pp_varlist(p.children[0])}) {g} \n{pp_bcom(p.children[1], 1)} \n    return {pp_exp(p.children[2])}; \n{d}"
 
+
 def pp_name(n):
     return f"{n.children[0]}"
 
@@ -227,12 +232,14 @@ def pp_func(f):
         return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], 1)} \n    return {pp_exp(f.children[3])}; \n{d}"
     else :
         return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], 1)} \n{d}"
+
 #ast = grammaire.parse("a = a + 1;")
 #ast = grammaire.parse("main (x, y) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} else {a = y;} return a;}")
 #ast = grammaire.parse("main (x, y, z) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} return a;}")
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
-ast = grammaire.parse("""f(x,y){
+
+ast = grammaire.parse("""pomme(x,y){
     while(x){
         x = f(y);
         y=y+1;
@@ -248,3 +255,4 @@ print(pp)
 f = open("ouf.asm", "w")
 f.write(asm)
 f.close()"""
+
