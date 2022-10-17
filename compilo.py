@@ -5,6 +5,7 @@ exp : SIGNED_NUMBER                                             -> exp_nombre
 | IDENTIFIER                                                    -> exp_var
 | exp OPBIN exp                                                 -> exp_opbin
 | "(" exp ")"                                                   -> exp_par
+| name "(" var_list ")"                                         -> call
 
 com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "if" "(" exp ")" "{" bcom "}"                                 -> if
@@ -14,7 +15,11 @@ com : IDENTIFIER "=" exp ";"                                    -> assignation
 
 bcom : (com)*
 
+func : name "(" var_list ")" "{" bcom  ("return" exp ";")? "}"
+
 prg : "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"
+
+name : IDENTIFIER
 
 var_list :                                                      -> vide
 | IDENTIFIER ("," IDENTIFIER)*                                  -> aumoinsune
@@ -27,7 +32,7 @@ OPBIN : /[+\-*>]/
 %import common.SIGNED_NUMBER
 %ignore WS
 """, 
-start="prg")
+start="func")
 
 tab = "    "
 g = "{"
@@ -175,6 +180,8 @@ def pp_exp(e, ntab = 0):
         return tabulation + e.children[0].value
     elif e.data == "exp_par":
         return f"{tabulation}({pp_exp(e.children[0])})"
+    elif e.data == "call":
+        return f"{tabulation}{pp_name(e.children[0])}({pp_varlist(e.children[1])})"
     else:
         return f"{tabulation}{pp_exp(e.children[0])} {e.children[1].value} {pp_exp(e.children[2])}"
 
@@ -210,21 +217,34 @@ def pp_prg(p):
     d = "}"
     return f"main ({pp_varlist(p.children[0])}) {g} \n{pp_bcom(p.children[1], 1)} \n    return {pp_exp(p.children[2])}; \n{d}"
 
+def pp_name(n):
+    return f"{n.children[0]}"
+
+def pp_func(f):
+    g = "{"
+    d = "}"
+    if (len(f.children)==4):
+        return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], 1)} \n    return {pp_exp(f.children[3])}; \n{d}"
+    else :
+        return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], 1)} \n{d}"
 #ast = grammaire.parse("a = a + 1;")
 #ast = grammaire.parse("main (x, y) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} else {a = y;} return a;}")
 #ast = grammaire.parse("main (x, y, z) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} return a;}")
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
-ast = grammaire.parse("""main(x,y){
+ast = grammaire.parse("""f(x,y){
     while(x){
-        x = x-1;
+        x = f(y);
         y=y+1;
     }
-    return y;
+    return f(x);
 } """
 )
 
-asm = asm_prg(ast)
+pp = pp_func(ast)
+print(pp)
+
+"""asm = asm_prg(ast)
 f = open("ouf.asm", "w")
 f.write(asm)
-f.close()
+f.close()"""
