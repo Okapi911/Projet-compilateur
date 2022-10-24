@@ -1,3 +1,4 @@
+from tokenize import Token
 import lark
 
 grammaire = lark.Lark(r"""
@@ -164,10 +165,20 @@ def vars_exp(e):
         return {e.children[0].value}
     elif e.data == "exp_par":
         return vars_exp(e.children[0])
+    elif e.data == "call":
+        return set([v.value for v in e.children[1].children if type(v)==Token])
     else:
         L = vars_exp(e.children[0])
         R = vars_exp(e.children[2])
         return L | R
+
+def vars_func(f):
+    L = set([v.value for v in f.children[1].children])
+    M  = asm_bcom(f.children[2])
+    R = set()
+    if len(f.children)==4:
+        R = asm_exp(f.children[3])
+    return L|M|R
 
 def vars_com(c):
     if c.data == "assignation":
@@ -183,6 +194,13 @@ def vars_com(c):
         return E | B
     elif c.data == "print":
         return vars_exp(c.children[0])
+    elif c.data == "function":
+        L = set([v.value for v in c.children[1].children])
+        M  = asm_bcom(c.children[2])
+        R = set()
+        if len(c.children)==4:
+            R = asm_exp(c.children[3])
+        return L|M|R
 
 def vars_bcom(bc):
     S = set()
