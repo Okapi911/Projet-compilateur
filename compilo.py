@@ -49,7 +49,7 @@ def asm_exp(e):
         return f"mov rax, [{e.children[0].value}]\n"
     elif e.data == "exp_par":
         return asm_exp(e.children[0])
-    else:
+    elif e.data == "exp_opbin":
         E1 = asm_exp(e.children[0])
         E2 = asm_exp(e.children[2])
         return f"""
@@ -58,6 +58,12 @@ def asm_exp(e):
         {E1}
         pop rbx
         {op[e.children[1].value]} rax, rbx
+        """
+    else:
+        D = "\n".join([f"push {v}" for v in reversed(e.children[1])])
+        return f"""
+        {D}\n
+        call {e.children[0]}
         """
 
 cpt = 0
@@ -104,6 +110,32 @@ def asm_com(c):
         mov rsi, rax
         call printf
         """
+    else:
+        C = asm_bcom(c.children[2])
+        nbre_child=len(c.children)
+        if nbre_child==4:
+            E = asm_exp(c.children[3])
+            return f"""
+            {c.children[0]}:
+                push rbp
+                mov rbp, rsp
+                mov rsp, [rbp-8]
+                {C}
+                {E}
+                mov rsp, rax
+                mov rsp, rbp
+                pop rbp
+                ret
+            """
+            
+        else:
+            return f"""
+            {c.children[0]}:
+                push rbp
+                mov rbp, rsp
+                mov rsp, [rbp-8]
+                {C}
+            """
 
 def asm_bcom(bc):
     return "\n".join([asm_com(c) for c in bc.children])
@@ -222,6 +254,8 @@ def pp_prg(p):
     g = "{"
     d = "}"
     return f"main ({pp_varlist(p.children[0])}) {g} \n{pp_bcom(p.children[1], 1)} \n    return {pp_exp(p.children[2])}; \n{d}"
+  
+
 
 
 def pp_func(f, ntab = 0):
@@ -248,17 +282,21 @@ def pp_name(n):
 #ast = grammaire.parse("main (x, y, z) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} return a;}")
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
-ast = grammaire.parse("""pomme(x,y){
+ast = grammaire.parse("""main(x,y){
     tomate(x,y){
         x=y-1;
         return x;
     }
     tomato(){}
     while(x){
-        x = f(y);
+        x = f(y1);
+        a=2;
+        x=f(a);
         y=y+1;
+        z=1;
     }
-    return f(x);
+    print(f(z));
+    return pomme(x,y);
 } """
 )
 
