@@ -5,9 +5,8 @@ exp : SIGNED_NUMBER                                             -> exp_nombre
 | IDENTIFIER                                                    -> exp_var
 | exp OPBIN exp                                                 -> exp_opbin
 | "(" exp ")"                                                   -> exp_par
-| IDENTIFIER"("var_list")"                                      -> exp_appel
+| IDENTIFIER "(" var_list ")"                                   -> exp_appel
 | NULL                                                          -> exp_null
-| "this."IDENTIFIER                                             -> exp_thisPointId
 
 com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "if" "(" exp ")" "{" bcom "}"                                 -> if
@@ -17,7 +16,9 @@ com : IDENTIFIER "=" exp ";"                                    -> assignation
 
 bcom : (com)*
 
-prg : "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"
+bcls : (cls)*
+
+prg : bcls "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"
 
 cls : "class" IDENTIFIER "{" IDENTIFIER "(" var_list ")" "{" bcom "}" "}"                   -> declaration_class
 
@@ -34,7 +35,7 @@ OPBIN : /[+\-*>]/
 %import common.SIGNED_NUMBER
 %ignore WS
 """, 
-start="cls")
+start="prg")
 
 tab = "    "
 g = "{"
@@ -184,6 +185,8 @@ def pp_exp(e, ntab = 0):
         return f"{tabulation}({pp_exp(e.children[0])})"
     elif e.data == "exp_null":
         return "NULL"
+    elif e.data == "exp_appel":
+        return f"{e.children[0].value}({pp_varlist(e.children[1])})"
     else:
         return f"{tabulation}{pp_exp(e.children[0])} {e.children[1].value} {pp_exp(e.children[2])}"
 
@@ -217,10 +220,13 @@ def pp_varlist(l):
 def pp_cls(c, ntab = 0):
     return f"class {c.children[0]} {g} \n{tab}{c.children[1]}({pp_varlist(c.children[2])}) {g} \n{pp_bcom(c.children[3], ntab + 2)} \n{tab}{d} \n{d}"
 
+def pp_bcls(bcls, ntab = 0):
+    return "\n\n".join([pp_cls(c, ntab) for c in bcls.children])
+
 def pp_prg(p):
     g = "{"
     d = "}"
-    return f"main ({pp_varlist(p.children[0])}) {g} \n{pp_bcom(p.children[1], 1)} \n    return {pp_exp(p.children[2])}; \n{d}"
+    return f"{pp_bcls(p.children[0])} \n\nmain ({pp_varlist(p.children[1])}) {g} \n{pp_bcom(p.children[2], 1)} \n    return {pp_exp(p.children[3])}; \n{d}"
 
 #ast = grammaire.parse("a = a + 1;")
 #ast = grammaire.parse("main (x, y) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} else {a = y;} return a;}")
@@ -229,15 +235,20 @@ def pp_prg(p):
 
 ast = grammaire.parse("""
 class A{
-    A(X,Y,Z){
-        if (X){
-            variable = NULL;
-        }
+    A(a,b,c){
+        c = b;
     }
+}
+
+main(a, b){ 
+    if (a) {
+        b = a;
+    }
+    return b;
 }
 """)
 print(ast)
-print(pp_cls(ast))
+print(pp_prg(ast))
 
 """asm = asm_prg(ast)
 
