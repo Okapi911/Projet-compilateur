@@ -1,14 +1,18 @@
+from http.client import FORBIDDEN
+from logging.handlers import SYSLOG_UDP_PORT
 import lark
 
 grammaire = lark.Lark(r"""
 exp : SIGNED_NUMBER                                             -> exp_nombre
 | IDENTIFIER                                                    -> exp_var
+| PIDENTIFIER                                                   -> exp_pvar
 | exp OPBIN exp                                                 -> exp_opbin
 | "(" exp ")"                                                   -> exp_par
 | IDENTIFIER "(" var_list ")"                                   -> exp_appel
 | NULL                                                          -> exp_null
 
 com : IDENTIFIER "=" exp ";"                                    -> assignation
+| PIDENTIFIER "=" exp ";"                                        -> p_assignation
 | "if" "(" exp ")" "{" bcom "}"                                 -> if
 | "if" "(" exp ")" "{" bcom "}" "else" "{" bcom "}"             -> if_else
 | "while" "(" exp ")" "{" bcom "}"                              -> while
@@ -25,6 +29,8 @@ cls : "class" IDENTIFIER "{" IDENTIFIER "(" var_list ")" "{" bcom "}" "}"       
 var_list :                                                      -> vide
 | IDENTIFIER ("," IDENTIFIER)*                                  -> aumoinsune
 
+PIDENTIFIER : "this."/[a-zA-Z][a-zA-Z0-9]*/
+
 IDENTIFIER : /[a-zA-Z][a-zA-Z0-9]*/
 
 NULL : "NULL"
@@ -35,7 +41,7 @@ OPBIN : /[+\-*>]/
 %import common.SIGNED_NUMBER
 %ignore WS
 """, 
-start="prg")
+start="cls")
 
 tab = "    "
 g = "{"
@@ -50,7 +56,7 @@ def asm_exp(e):
         return f"mov rax, [{e.children[0].value}]\n"
     elif e.data == "exp_par":
         return asm_exp(e.children[0])
-    else:
+    elif e.data == "exp_opbin":
         E1 = asm_exp(e.children[0])
         E2 = asm_exp(e.children[2])
         return f"""
@@ -67,13 +73,33 @@ def next():
     cpt += 1
     return cpt
 
+def asm_class(cls):
+
+
+
+
+    return f"""{cls.children[0]} :
+    push rbp
+    mov rsp, rbp
+    {asm_bcom(cls.children[3])}
+    """
+
 def asm_com(c):
     if c.data == "assignation":
+        if c.children[1].data == "exp_nombre" or c.children[1].data == "exp_var":
+            E1 = asm_exp(c.children[1])
+            return f"""
+            {E1}
+            mov [{c.children[0].value}], rax 
+            """
+        elif c.children[1].data == "exp_appel":
+            pass
+    elif c.data == "p_assignation":
         E1 = asm_exp(c.children[1])
-        return f"""
-        {E1}
-        mov [{c.children[0].value}], rax 
-        """
+            return f"""
+            {E1}
+            mov [{c.children[0].value}], rax 
+            """
     elif c.data == "if":
         E1 = asm_exp(c.children[0])
         C1 = asm_bcom(c.children[1])
@@ -181,6 +207,8 @@ def pp_exp(e, ntab = 0):
         return tabulation + e.children[0].value
     elif e.data == "exp_var":
         return tabulation + e.children[0].value
+    elif e.data == "exp_pvar":
+        return tabulation + e.children[0].value
     elif e.data == "exp_par":
         return f"{tabulation}({pp_exp(e.children[0])})"
     elif e.data == "exp_null":
@@ -210,6 +238,10 @@ def pp_com(c, ntab = 0):
         
     elif c.data == "print":
         return f"{tabulation}print({pp_exp(c.children[0])});"
+    
+    elif c.data == "p_assignation":
+
+        return f"{tabulation}{c.children[0].value} = {pp_exp(c.children[1])};"
 
 def pp_bcom(bc, ntab = 0):
     return "\n".join([pp_com(c, ntab) for c in bc.children])
@@ -218,6 +250,8 @@ def pp_varlist(l):
     return ", ".join([var.value for var in l.children])
 
 def pp_cls(c, ntab = 0):
+    if c.children[0] != c.children[1]:
+        raise Exception
     return f"class {c.children[0]} {g} \n{tab}{c.children[1]}({pp_varlist(c.children[2])}) {g} \n{pp_bcom(c.children[3], ntab + 2)} \n{tab}{d} \n{d}"
 
 def pp_bcls(bcls, ntab = 0):
@@ -236,19 +270,17 @@ def pp_prg(p):
 ast = grammaire.parse("""
 class A{
     A(a,b,c){
-        c = b;
+        this.c = this.a + 37 + a + b+ c;
     }
-}
-
-main(a, b){ 
-    if (a) {
-        b = a;
-    }
-    return b;
 }
 """)
+
 print(ast)
-print(pp_prg(ast))
+print(pp_cls(ast))
+
+
+"""
+print(asm_class(ast))"""
 
 """asm = asm_prg(ast)
 
