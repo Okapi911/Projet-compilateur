@@ -48,6 +48,11 @@ def asm_exp(e):
         return f"mov rax, [{e.children[0].value}]\n"
     elif e.data == "exp_par":
         return asm_exp(e.children[0])
+    elif e.data == "call":
+        var_call = "\n".join(["push {v}" for v in reversed(e.children[1])])
+        return f"""
+        {var_call}\n
+        call {e.children[0]}()"""
     else:
         E1 = asm_exp(e.children[0])
         E2 = asm_exp(e.children[2])
@@ -240,7 +245,8 @@ def pp_func(f, ntab=0):
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
 
-ast = grammaire.parse("""pomme(x,y){
+ast = grammaire.parse("""main(x,y){
+    pomme(x,y){
     tomate(x,y){
         x=y-1;
         return x;
@@ -251,6 +257,7 @@ ast = grammaire.parse("""pomme(x,y){
         y=y+1;
     }
     return f(x);
+}
 } """
 )
 
