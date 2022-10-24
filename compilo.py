@@ -6,29 +6,20 @@ exp : SIGNED_NUMBER                                             -> exp_nombre
 | exp OPBIN exp                                                 -> exp_opbin
 | "(" exp ")"                                                   -> exp_par
 | name "(" var_list ")"                                         -> call
-
 com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "if" "(" exp ")" "{" bcom "}"                                 -> if
 | "if" "(" exp ")" "{" bcom "}" "else" "{" bcom "}"             -> if_else
 | "while" "(" exp ")" "{" bcom "}"                              -> while
 | "print" "(" exp ")" ";"                                       -> print
-| func                                                          -> fonction
-
+| func                                                          -> function
 bcom : (com)*
-
-func : name "(" var_list ")" "{" bcom  ("return" exp ";")? "}"
-
-prg : "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"
-
+func : name "(" var_list ")" "{" bcom ("return" exp ";")? "}"
+prg : "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"    -> main
 name : IDENTIFIER
-
 var_list :                                                      -> vide
 | IDENTIFIER ("," IDENTIFIER)*                                  -> aumoinsune
-
 IDENTIFIER : /[a-zA-Z][a-zA-Z0-9]*/
-
 OPBIN : /[+\-*>]/
-
 %import common.WS
 %import common.SIGNED_NUMBER
 %ignore WS
@@ -48,12 +39,7 @@ def asm_exp(e):
         return f"mov rax, [{e.children[0].value}]\n"
     elif e.data == "exp_par":
         return asm_exp(e.children[0])
-    elif e.data == "call":
-        var_call = "\n".join(["push {v}" for v in reversed(e.children[1])])
-        return f"""
-        {var_call}\n
-        call {e.children[0]}()"""
-    else:
+    elif e.data == "exp_opbin":
         E1 = asm_exp(e.children[0])
         E2 = asm_exp(e.children[2])
         return f"""
@@ -62,6 +48,12 @@ def asm_exp(e):
         {E1}
         pop rbx
         {op[e.children[1].value]} rax, rbx
+        """
+    else:
+        D = "\n".join([f"push {v}" for v in reversed(e.children[1])])
+        return f"""
+        {D}\n
+        call {e.children[0]}
         """
 
 cpt = 0
@@ -108,6 +100,32 @@ def asm_com(c):
         mov rsi, rax
         call printf
         """
+    else:
+        C = asm_bcom(c.children[2])
+        nbre_child=len(c.children)
+        if nbre_child==4:
+            E = asm_exp(c.children[3])
+            return f"""
+            {c.children[0]}:
+                push rbp
+                mov rbp, rsp
+                mov rsp, [rbp-8]
+                {C}
+                {E}
+                mov rsp, rax
+                mov rsp, rbp
+                pop rbp
+                ret
+            """
+            
+        else:
+            return f"""
+            {c.children[0]}:
+                push rbp
+                mov rbp, rsp
+                mov rsp, [rbp-8]
+                {C}
+            """
 
 def asm_bcom(bc):
     return "\n".join([asm_com(c) for c in bc.children])
@@ -212,7 +230,8 @@ def pp_com(c, ntab = 0):
     elif c.data == "print":
         return f"{tabulation}print({pp_exp(c.children[0])});"
     
-    elif c.data == "fonction":
+
+    elif c.data == "function":
         return f"{tabulation}{pp_func(c.children[0], ntab)}"
 
 def pp_bcom(bc, ntab = 0):
@@ -225,39 +244,49 @@ def pp_prg(p):
     g = "{"
     d = "}"
     return f"main ({pp_varlist(p.children[0])}) {g} \n{pp_bcom(p.children[1], 1)} \n    return {pp_exp(p.children[2])}; \n{d}"
+  
 
 
-def pp_name(n):
-    return f"{n.children[0]}"
 
-def pp_func(f, ntab=0):
+def pp_func(f, ntab = 0):
     tabulation = ntab * tab
     g = "{"
     d = "}"
-    if (len(f.children)==4):
-        return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
-    else :
-        return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{d}"
+    nbre_child=len(f.children)
+    if nbre_child==3:
+        if(pp_bcom(f.children[2])!=""):
+            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{d}"
+        else:
+            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{tabulation}{d}"
+    else:
+        if(pp_bcom(f.children[2])!=""):
+            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
+        else:
+            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
+
+def pp_name(n):
+    return f"{n.children[0]}"
 
 #ast = grammaire.parse("a = a + 1;")
 #ast = grammaire.parse("main (x, y) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} else {a = y;} return a;}")
 #ast = grammaire.parse("main (x, y, z) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} return a;}")
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
-
 ast = grammaire.parse("""main(x,y){
-    pomme(x,y){
     tomate(x,y){
         x=y-1;
         return x;
     }
     tomato(){}
     while(x){
-        x = f(y);
+        x = f(y1);
+        a=2;
+        x=f(a);
         y=y+1;
+        z=1;
     }
-    return f(x);
-}
+    print(f(z));
+    return pomme(x,y);
 } """
 )
 
@@ -268,4 +297,3 @@ print(pp)
 f = open("ouf.asm", "w")
 f.write(asm)
 f.close()"""
-
