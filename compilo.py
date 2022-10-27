@@ -13,6 +13,7 @@ com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "if" "(" exp ")" "{" bcom "}" "else" "{" bcom "}"             -> if_else
 | "while" "(" exp ")" "{" bcom "}"                              -> while
 | "print" "(" exp ")" ";"                                       -> print
+
 | func                                                          -> function
 
 bcom : (com)*
@@ -64,8 +65,8 @@ def asm_exp(e):
     else:
         D = "\n".join([f"push {v}" for v in reversed(e.children[1].children)])
         return f"""
-        {D}
-        call {e.children[0].children[0]}
+    {D}
+    call {e.children[0].children[0]}
         """
 
 cpt = 0
@@ -78,39 +79,39 @@ def asm_com(c):
     if c.data == "assignation":
         E1 = asm_exp(c.children[1])
         return f"""
-        {E1}
-        mov [{c.children[0].value}], rax 
+    {E1}
+    mov [{c.children[0].value}], rax 
         """
     elif c.data == "if":
         E1 = asm_exp(c.children[0])
         C1 = asm_bcom(c.children[1])
         n = next()
         return f"""
-        {E1}
-        cmp rax, 0
-        jz fin{n}
-        {C1}
-        fin{n} : nop
+    {E1}
+    cmp rax, 0
+    jz fin{n}
+    {C1}
+    fin{n} : nop
         """
     elif c.data == "while":
         E1 = asm_exp(c.children[0])
         C1 = asm_bcom(c.children[1])
         n = next()
         return f"""
-        debut{n} : {E1}
-        cmp rax, 0
-        jz fin{n}
-        {C1}
-        jmp debut{n}
-        fin{n} : nop
+    debut{n} : {E1}
+    cmp rax, 0
+    jz fin{n}
+    {C1}
+    jmp debut{n}
+    fin{n} : nop
         """
     elif c.data == "print":
         E1 = asm_exp(c.children[0])
         return f"""
-        {E1}
-        mov rdi, fmt
-        mov rsi, rax
-        call printf
+    {E1}
+    mov rdi, fmt
+    mov rsi, rax
+    call printf
         """
     else:
         C = asm_bcom(c.children[0].children[2])
@@ -119,24 +120,24 @@ def asm_com(c):
             E = asm_exp(c.children[0].children[3])
             return f"""
             {c.children[0].children[0].children[0].value}:
-                push rbp
-                mov rbp, rsp
-                mov rsp, [rbp-8]
-                {C}
-                {E}
-                mov rsp, rax
-                mov rsp, rbp
-                pop rbp
-                ret
+    push rbp
+    mov rbp, rsp
+    mov rsp, [rbp-8]
+    {C}
+    {E}
+    mov rsp, rax
+    mov rsp, rbp
+    pop rbp
+    ret
             """
             
         else:
             return f"""
             {c.children[0].children[0].children[0].value}:
-                push rbp
-                mov rbp, rsp
-                mov rsp, [rbp-8]
-                {C}
+    push rbp
+    mov rbp, rsp
+    mov rsp, [rbp-8]
+    {C}
             """
 
 def asm_bcom(bc):
@@ -148,25 +149,28 @@ def asm_func(f):
     if nbre_child==4:
         E = asm_exp(f.children[3])
         return f"""
-        {f.children[0].children[0].value}:
-            push rbp
-            mov rbp, rsp
-            mov rsp, [rbp-8]
-            {C}
-            {E}
-            mov rsp, rax
-            mov rsp, rbp
-            pop rbp
-            ret
-        """ 
+{f.children[0].children[0].value}:
+    push rbp
+    mov rbp, rsp
+    mov rdi, [rbx+8]
+    xor rax, rax
+    call atoi
+    mov [y], rax
+    {C}
+    {E}
+    mov rsp, rax
+    mov rsp, rbp
+    pop rbp
+    ret
+    """ 
     else:
         return f"""
-        {f.children[0].children[0].value}:
-            push rbp
-            mov rbp, rsp
-            mov rsp, [rbp-8]
-            {C}
-        """
+{f.children[0].children[0].value}:
+    push rbp
+    mov rbp, rsp
+    mov rsp, [rbp-8]
+    {C}
+    """
 
 def asm_bfunc(bf):
     return "\n".join([asm_func(f) for f in bf.children])
@@ -188,15 +192,15 @@ def asm_prg(p):
     for i in range(len(p.children[1].children)):
         v = p.children[1].children[i].value
         e = f"""
-        mov rbx, [argv]
-        mov rdi, [rbx + {8*(i+1)}]
-        xor rax, rax
-        call atoi
-        mov [{v}], rax
+    mov rbx, [argv]
+    mov rdi, [rbx + {8*(i+1)}]
+    xor rax, rax
+    call atoi
+    mov [{v}], rax
         """
         s = s + e
     moule = moule.replace("INIT_VARS", s)
-    f=f"{asm_bfunc(p.children[0])}"
+    f=f"""{asm_bfunc(p.children[0])}"""
     moule = moule.replace("FUNC", f)
     return moule
 
@@ -237,12 +241,7 @@ def vars_com(c):
     elif c.data == "print":
         return vars_exp(c.children[0])
     elif c.data == "function":
-        L = set([v.value for v in c.children[1].children])
-        M  = asm_bcom(c.children[2])
-        R = set()
-        if len(c.children)==4:
-            R = asm_exp(c.children[3])
-        return L|M|R
+        return vars_func(c.children[0])
 
 def vars_bcom(bc):
     S = set()
@@ -261,7 +260,7 @@ def vars_prg(p):
     L = set([t.value for t in p.children[1].children])
     C = vars_bcom(p.children[2])
     E = vars_exp(p.children[3])
-    return L | C | E
+    return L | C | E | F
 
 def pp_exp(e, ntab = 0):
     tabulation = ntab * tab
@@ -297,6 +296,7 @@ def pp_com(c, ntab = 0):
     elif c.data == "print":
         return f"{tabulation}print({pp_exp(c.children[0])});"
     
+
     elif c.data == "function":
         return f"{tabulation}{pp_func(c.children[0], ntab)}"
 
