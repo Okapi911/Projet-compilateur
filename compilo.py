@@ -13,7 +13,6 @@ com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "if" "(" exp ")" "{" bcom "}" "else" "{" bcom "}"             -> if_else
 | "while" "(" exp ")" "{" bcom "}"                              -> while
 | "print" "(" exp ")" ";"                                       -> print
-
 | func                                                          -> function
 
 bcom : (com)*
@@ -238,7 +237,12 @@ def vars_com(c):
     elif c.data == "print":
         return vars_exp(c.children[0])
     elif c.data == "function":
-        return vars_func(c.children[0])
+        L = set([v.value for v in c.children[1].children])
+        M  = asm_bcom(c.children[2])
+        R = set()
+        if len(c.children)==4:
+            R = asm_exp(c.children[3])
+        return L|M|R
 
 def vars_bcom(bc):
     S = set()
@@ -293,7 +297,6 @@ def pp_com(c, ntab = 0):
     elif c.data == "print":
         return f"{tabulation}print({pp_exp(c.children[0])});"
     
-
     elif c.data == "function":
         return f"{tabulation}{pp_func(c.children[0], ntab)}"
 
