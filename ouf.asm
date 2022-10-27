@@ -4,7 +4,7 @@ fmt : db "%d", 10, 0
 argc : dq 0
 argv : dq 0
 x : dq 0
-y : dq 0
+$y : dq 0
 
 section .text
 global main
@@ -23,7 +23,7 @@ main :
         mov rdi, [rbx +16]
         xor rax, rax
         call atoi
-        mov[y], rax
+        mov[$y], rax
         
     
         debut1 : mov rax, [x]
@@ -46,17 +46,17 @@ main :
         mov rax, 1
 
         push rax
-        mov rax, [y]
+        mov rax, [$y]
 
         pop rbx
         add rax, rbx
         
-        mov [y], rax
+        mov [$y], rax
         
         jmp debut1
         fin1 : nop
         
-    mov rax, [y]
+    mov rax, [$y]
 
     mov rdi, fmt
     mov rsi, rax
