@@ -6,13 +6,17 @@ exp : SIGNED_NUMBER                                             -> exp_nombre
 | IDENTIFIER                                                    -> exp_var
 | exp OPBIN exp                                                 -> exp_opbin
 | "(" exp ")"                                                   -> exp_par
-| name "(" var_list ")"                                         -> call
+| name "(" args_list ")"                                        -> call
 com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "if" "(" exp ")" "{" bcom "}"                                 -> if
 | "if" "(" exp ")" "{" bcom "}" "else" "{" bcom "}"             -> if_else
 | "while" "(" exp ")" "{" bcom "}"                              -> while
 | "print" "(" exp ")" ";"                                       -> print
 | func                                                          -> function
+args_list :                                                     -> vide
+| args ("," args)*                                              -> aumoinsun
+args : SIGNED_NUMBER                                            -> int_arg
+| var_list                                                      -> var_arg
 bcom : (com)*
 func : name "(" var_list ")" "{" bcom ("return" exp ";")? "}"
 
@@ -230,9 +234,22 @@ def pp_exp(e, ntab = 0):
     elif e.data == "exp_par":
         return f"{tabulation}({pp_exp(e.children[0])})"
     elif e.data == "call":
-        return f"{tabulation}{pp_name(e.children[0])}({pp_varlist(e.children[1])})"
+        return f"{tabulation}{pp_name(e.children[0])}({pp_argsList(e.children[1])})"
     else:
         return f"{tabulation}{pp_exp(e.children[0])} {e.children[1].value} {pp_exp(e.children[2])}"
+
+def pp_argsList(al):
+    if al.data == "vide":
+        return f""
+    else:
+        return ", ".join([pp_arg(a) for a in al.children])
+
+def pp_arg(a):
+    if a.data == "int_arg":
+        return a.children[0].value
+    elif a.data == "var_arg":
+        return pp_varlist(a.children[0])
+
 
 def pp_com(c, ntab = 0):
     tabulation = ntab * tab
@@ -310,7 +327,7 @@ ast = grammaire.parse("""
         f(x){
             return x+x;
         }
-        return f(x);
+        return f(5);
     }
 """
 )
