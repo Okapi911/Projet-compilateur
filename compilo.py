@@ -179,10 +179,10 @@ def vars_exp(e):
 
 def vars_func(f):
     L = set([v.value for v in f.children[1].children])
-    M  = asm_bcom(f.children[2])
+    M  = vars_bcom(f.children[2])
     R = set()
     if len(f.children)==4:
-        R = asm_exp(f.children[3])
+        R = vars_exp(f.children[3])
     return L|M|R
 
 def vars_com(c):
@@ -200,12 +200,7 @@ def vars_com(c):
     elif c.data == "print":
         return vars_exp(c.children[0])
     elif c.data == "function":
-        L = set([v.value for v in c.children[1].children])
-        M  = asm_bcom(c.children[2])
-        R = set()
-        if len(c.children)==4:
-            R = asm_exp(c.children[3])
-        return L|M|R
+        return vars_func(c.children[0])
 
 def vars_bcom(bc):
     S = set()
@@ -213,11 +208,18 @@ def vars_bcom(bc):
         S = S | vars_com(c)
     return S
 
+def vars_bfunc(bf):
+    S = set()
+    for f in bf.children:
+        S = S | vars_func(f)
+    return S
+
 def vars_prg(p):
-    L = set([t.value for t in p.children[0].children])
-    C = vars_bcom(p.children[1])
-    E = vars_exp(p.children[2])
-    return L | C | E
+    F = vars_bfunc(p.children[0])
+    L = set([t.value for t in p.children[1].children])
+    C = vars_bcom(p.children[2])
+    E = vars_exp(p.children[3])
+    return F | L | C | E
 
 def pp_exp(e, ntab = 0):
     tabulation = ntab * tab
@@ -317,7 +319,7 @@ print(ast)
 
 pp = pp_prg(ast)
 print('\n'+pp)
-
+print(vars_prg(ast))
 """asm = asm_prg(ast)
 f = open("ouf.asm", "w")
 f.write(asm)
