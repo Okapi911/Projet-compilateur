@@ -1,3 +1,4 @@
+from tokenize import Token
 import lark
 
 grammaire = lark.Lark(r"""
@@ -62,10 +63,10 @@ def asm_exp(e):
         {op[e.children[1].value]} rax, rbx
         """
     else:
-        D = "\n".join([f"push {v}" for v in reversed(e.children[1])])
+        D = "\n".join([f"push {v}" for v in reversed(e.children[1].children)])
         return f"""
-        {D}\n
-        call {e.children[0]}
+        {D}
+        call {e.children[0].children[0]}
         """
 
 cpt = 0
@@ -113,12 +114,12 @@ def asm_com(c):
         call printf
         """
     else:
-        C = asm_bcom(c.children[2])
-        nbre_child=len(c.children)
+        C = asm_bcom(c.children[0].children[2])
+        nbre_child=len(c.children[0].children)
         if nbre_child==4:
-            E = asm_exp(c.children[3])
+            E = asm_exp(c.children[0].children[3])
             return f"""
-            {c.children[0]}:
+            {c.children[0].children[0].children[0].value}:
                 push rbp
                 mov rbp, rsp
                 mov rsp, [rbp-8]
@@ -128,12 +129,11 @@ def asm_com(c):
                 mov rsp, rbp
                 pop rbp
                 ret
-                \n
             """
             
         else:
             return f"""
-            {c.children[0]}:
+            {c.children[0].children[0].children[0].value}:
                 push rbp
                 mov rbp, rsp
                 mov rsp, [rbp-8]
@@ -143,22 +143,51 @@ def asm_com(c):
 def asm_bcom(bc):
     return "\n".join([asm_com(c) for c in bc.children])
 
+def asm_func(f):
+    C = asm_bcom(f.children[2])
+    nbre_child=len(f.children)
+    if nbre_child==4:
+        E = asm_exp(f.children[3])
+        return f"""
+        {f.children[0].children[0].value}:
+            push rbp
+            mov rbp, rsp
+            mov rsp, [rbp-8]
+            {C}
+            {E}
+            mov rsp, rax
+            mov rsp, rbp
+            pop rbp
+            ret
+        """ 
+    else:
+        return f"""
+        {f.children[0].children[0].value}:
+            push rbp
+            mov rbp, rsp
+            mov rsp, [rbp-8]
+            {C}
+        """
+
+def asm_bfunc(bf):
+    return "\n".join([asm_func(f) for f in bf.children])
+
 def asm_prg(p):
     f = open("moule.asm")
     moule = f.read()
-
-    C = asm_bcom(p.children[1])
+    
+    C = asm_bcom(p.children[2])
     moule = moule.replace("BODY", C)
-
-    E = asm_exp(p.children[2])
+    
+    E = asm_exp(p.children[3])
     moule = moule.replace("RETURN", E)
 
     D = "\n".join([f"{v} : dq 0" for v in vars_prg(p)])
     moule = moule.replace("DECL_VARS", D)
 
     s = ""
-    for i in range(len(p.children[0].children)):
-        v = p.children[0].children[i].value
+    for i in range(len(p.children[1].children)):
+        v = p.children[1].children[i].value
         e = f"""
         mov rbx, [argv]
         mov rdi, [rbx + {8*(i+1)}]
@@ -168,6 +197,8 @@ def asm_prg(p):
         """
         s = s + e
     moule = moule.replace("INIT_VARS", s)
+    f=f"{asm_bfunc(p.children[0])}"
+    moule = moule.replace("FUNC", f)
     return moule
 
 def vars_exp(e):
@@ -177,10 +208,20 @@ def vars_exp(e):
         return {e.children[0].value}
     elif e.data == "exp_par":
         return vars_exp(e.children[0])
+    elif e.data == "call":
+        return set([v.value for v in e.children[1].children if type(v)==Token])
     else:
         L = vars_exp(e.children[0])
         R = vars_exp(e.children[2])
         return L | R
+
+def vars_func(f):
+    L = set([v.value for v in f.children[1].children])
+    M  = vars_bcom(f.children[2])
+    R = set()
+    if len(f.children)==4:
+        R = vars_exp(f.children[3])
+    return L|M|R
 
 def vars_com(c):
     if c.data == "assignation":
@@ -196,6 +237,8 @@ def vars_com(c):
         return E | B
     elif c.data == "print":
         return vars_exp(c.children[0])
+    elif c.data == "function":
+        return vars_func(c.children[0])
 
 def vars_bcom(bc):
     S = set()
@@ -203,10 +246,17 @@ def vars_bcom(bc):
         S = S | vars_com(c)
     return S
 
+def vars_bfunc(bf):
+    S = set()
+    for f in bf.children:
+        S = S | vars_func(f)
+    return S
+
 def vars_prg(p):
-    L = set([t.value for t in p.children[0].children])
-    C = vars_bcom(p.children[1])
-    E = vars_exp(p.children[2])
+    F = vars_bfunc(p.children[0])
+    L = set([t.value for t in p.children[1].children])
+    C = vars_bcom(p.children[2])
+    E = vars_exp(p.children[3])
     return L | C | E
 
 def pp_exp(e, ntab = 0):
@@ -286,29 +336,21 @@ def pp_name(n):
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
 ast = grammaire.parse("""
-    g(y){
+    f(y){
         return y;
     }
-    
-    h(b){
-        return 2*b;
-    }
-    
     main(x){
-        f(x){
-            return x+x;
-        }
         return f(x);
     }
 """
 )
 
-print(ast)
+"""print(ast)
 
 pp = pp_prg(ast)
-print('\n'+pp)
+print('\n'+pp)"""
 
-"""asm = asm_prg(ast)
-f = open("ouf.asm", "w")
+asm = asm_prg(ast)
+f = open("ouf_func.asm", "w")
 f.write(asm)
-f.close()"""
+f.close()

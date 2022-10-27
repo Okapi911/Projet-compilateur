@@ -6,6 +6,9 @@ argv : dq 0
 DECL_VARS
 
 section .text
+
+FUNC
+
 global main
 main :
     push rbp
