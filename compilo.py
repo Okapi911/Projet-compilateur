@@ -175,11 +175,26 @@ def vars_exp(e):
     elif e.data == "exp_par":
         return vars_exp(e.children[0])
     elif e.data == "call":
-        return set([v.value for v in e.children[1].children if type(v)==Token])
+        return vars_argl(e.children[1])
     else:
         L = vars_exp(e.children[0])
         R = vars_exp(e.children[2])
         return L | R
+
+def vars_argl(al):
+    if al.data == "vide":
+        return set()
+    else :
+        S = set()
+        for a in al.children:
+            S = S | vars_arg(a)
+    return S
+
+def vars_arg(a):
+    if a.data == "int_arg":
+        return set ()
+    else :
+        return set([v.value for v in a.children[0].children])
 
 def vars_func(f):
     L = set([v.value for v in f.children[1].children])
@@ -324,10 +339,10 @@ ast = grammaire.parse("""
     }
     
     main(x){
-        f(x){
+        f(x, q){
             return x+x;
         }
-        return f(5);
+        return f(5, x);
     }
 """
 )
