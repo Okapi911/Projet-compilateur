@@ -15,7 +15,11 @@ com : IDENTIFIER "=" exp ";"                                    -> assignation
 | func                                                          -> function
 bcom : (com)*
 func : name "(" var_list ")" "{" bcom ("return" exp ";")? "}"
-prg : "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"    -> main
+
+prg : bfunc "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"    -> prg
+
+bfunc : (func)*
+
 name : IDENTIFIER
 var_list :                                                      -> vide
 | IDENTIFIER ("," IDENTIFIER)*                                  -> aumoinsune
@@ -25,7 +29,7 @@ OPBIN : /[+\-*>]/
 %import common.SIGNED_NUMBER
 %ignore WS
 """, 
-start="func")
+start="prg")
 
 tab = "    "
 g = "{"
@@ -117,6 +121,7 @@ def asm_com(c):
                 mov rsp, rbp
                 pop rbp
                 ret
+                \n
             """
             
         else:
@@ -261,10 +266,10 @@ def pp_varlist(l):
 def pp_prg(p):
     g = "{"
     d = "}"
-    return f"main ({pp_varlist(p.children[0])}) {g} \n{pp_bcom(p.children[1], 1)} \n    return {pp_exp(p.children[2])}; \n{d}"
-  
+    return f"{pp_bfunc(p.children[0])} \n\nmain ({pp_varlist(p.children[1])}) {g} \n{pp_bcom(p.children[2], 1)} \n    return {pp_exp(p.children[3])}; \n{d}"
 
-
+def pp_bfunc(bf, ntab = 0):
+    return "\n\n".join([pp_func(f, ntab) for f in bf.children])
 
 def pp_func(f, ntab = 0):
     tabulation = ntab * tab
@@ -290,26 +295,28 @@ def pp_name(n):
 #ast = grammaire.parse("main (x, y, z) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} return a;}")
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
-ast = grammaire.parse("""main(x,y){
-    tomate(x,y){
-        x=y-1;
-        return x;
+ast = grammaire.parse("""
+    g(y){
+        return y;
     }
-    tomato(){}
-    while(x){
-        x = f(y1);
-        a=2;
-        x=f(a);
-        y=y+1;
-        z=1;
+    
+    h(b){
+        return 2*b;
     }
-    print(f(z));
-    return pomme(x,y);
-} """
+    
+    main(x){
+        f(x){
+            return x+x;
+        }
+        return f(x);
+    }
+"""
 )
 
-pp = pp_func(ast)
-print(pp)
+print(ast)
+
+pp = pp_prg(ast)
+print('\n'+pp)
 
 """asm = asm_prg(ast)
 f = open("ouf.asm", "w")
