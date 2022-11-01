@@ -67,18 +67,25 @@ def asm_exp(e):
     {op[e.children[1].value]} rax, rbx
         """
     else:
-        s=""
-        for i in range(len(e.children[1].children)):
-            temp=f"""
-    mov rax, [{e.children[1].children[len(e.children[1].children)-1-i]}]
+
+            s=""
+            for i in range(len(e.children[1].children)):
+                if(e.children[1].children[0].data == "var_arg"):
+                    temp=f"""
+    mov rax, [{e.children[1].children[len(e.children[1].children)-1-i].children[0].children[0].value}]
     push rax 
-            """
-            s=s+temp
-        return f"""
+                    """
+                else:
+                    temp=f"""
+    mov rax, {e.children[1].children[len(e.children[1].children)-1-i].children[0].value}
+    push rax 
+                    """
+                s=s+temp
+            return f"""
     {s}
     call {e.children[0].children[0]}
     add rsp, 8*{len(e.children[1].children)}
-        """
+                """
 
 cpt = 0
 def next():
@@ -376,16 +383,13 @@ def pp_name(n):
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
 ast = grammaire.parse("""
-    f(x,a){
-        while(x){
-            a=a*a;
-            x=x-1;
-        }
+    f(a){
         return a;
     }
-    main(d,s){
-        c=f(d,s);
-        return c;
+    main(b){
+        c=f(b);
+        d=f(4);
+        return c+d;
     }
 """
 )
