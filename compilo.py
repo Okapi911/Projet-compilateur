@@ -7,17 +7,21 @@ exp : SIGNED_NUMBER                                             -> exp_nombre
 | exp OPBIN exp                                                 -> exp_opbin
 | "(" exp ")"                                                   -> exp_par
 | name "(" args_list ")"                                        -> call
+
 com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "if" "(" exp ")" "{" bcom "}"                                 -> if
 | "if" "(" exp ")" "{" bcom "}" "else" "{" bcom "}"             -> if_else
 | "while" "(" exp ")" "{" bcom "}"                              -> while
 | "print" "(" exp ")" ";"                                       -> print
-| func                                                          -> function
+
 args_list :                                                     -> vide
 | args ("," args)*                                              -> aumoinsun
+
 args : SIGNED_NUMBER                                            -> int_arg
 | var_list                                                      -> var_arg
+
 bcom : (com)*
+
 func : name "(" var_list ")" "{" bcom ("return" exp ";")? "}"
 
 prg : bfunc "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"    -> prg
@@ -25,10 +29,14 @@ prg : bfunc "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"    -> prg
 bfunc : (func)*
 
 name : IDENTIFIER
+
 var_list :                                                      -> vide
 | IDENTIFIER ("," IDENTIFIER)*                                  -> aumoinsune
+
 IDENTIFIER : /[a-zA-Z][a-zA-Z0-9]*/
+
 OPBIN : /[+\-*>]/
+
 %import common.WS
 %import common.SIGNED_NUMBER
 %ignore WS
@@ -39,7 +47,7 @@ tab = "    "
 g = "{"
 d = "}"
 
-op = {'+' : 'add', '-' : 'sub'}
+op = {'+' : 'add', '-' : 'sub', '*' : 'imul', '/' : 'idiv'}
 
 def asm_exp(e):
     if e.data == "exp_nombre":
@@ -52,17 +60,24 @@ def asm_exp(e):
         E1 = asm_exp(e.children[0])
         E2 = asm_exp(e.children[2])
         return f"""
-        {E2}
-        push rax
-        {E1}
-        pop rbx
-        {op[e.children[1].value]} rax, rbx
+    {E2}
+    push rax
+    {E1}
+    pop rbx
+    {op[e.children[1].value]} rax, rbx
         """
     else:
-        D = "\n".join([f"push {v}" for v in reversed(e.children[1])])
+        s=""
+        for i in range(len(e.children[1].children)):
+            temp=f"""
+    mov rax, [{e.children[1].children[len(e.children[1].children)-1-i]}]
+    push rax 
+            """
+            s=s+temp
         return f"""
-        {D}\n
-        call {e.children[0]}
+    {s}
+    call {e.children[0].children[0]}
+    add rsp, 8*{len(e.children[1].children)}
         """
 
 cpt = 0
@@ -75,96 +90,133 @@ def asm_com(c):
     if c.data == "assignation":
         E1 = asm_exp(c.children[1])
         return f"""
-        {E1}
-        mov [{c.children[0].value}], rax 
+    {E1}
+    mov [{c.children[0].value}], rax 
         """
     elif c.data == "if":
         E1 = asm_exp(c.children[0])
         C1 = asm_bcom(c.children[1])
         n = next()
         return f"""
-        {E1}
-        cmp rax, 0
-        jz fin{n}
-        {C1}
-        fin{n} : nop
+    {E1}
+    cmp rax, 0
+    jz fin{n}
+    {C1}
+    fin{n} : nop
         """
     elif c.data == "while":
         E1 = asm_exp(c.children[0])
         C1 = asm_bcom(c.children[1])
         n = next()
         return f"""
-        debut{n} : {E1}
-        cmp rax, 0
-        jz fin{n}
-        {C1}
-        jmp debut{n}
-        fin{n} : nop
+    debut{n} : {E1}
+    cmp rax, 0
+    jz fin{n}
+    {C1}
+    jmp debut{n}
+    fin{n} : nop
         """
     elif c.data == "print":
         E1 = asm_exp(c.children[0])
         return f"""
-        {E1}
-        mov rdi, fmt
-        mov rsi, rax
-        call printf
+    {E1}
+    mov rdi, fmt
+    mov rsi, rax
+    call printf
         """
-    else:
-        C = asm_bcom(c.children[2])
-        nbre_child=len(c.children)
-        if nbre_child==4:
-            E = asm_exp(c.children[3])
-            return f"""
-            {c.children[0]}:
-                push rbp
-                mov rbp, rsp
-                mov rsp, [rbp-8]
-                {C}
-                {E}
-                mov rsp, rax
-                mov rsp, rbp
-                pop rbp
-                ret
-                \n
-            """
-            
-        else:
-            return f"""
-            {c.children[0]}:
-                push rbp
-                mov rbp, rsp
-                mov rsp, [rbp-8]
-                {C}
-            """
 
 def asm_bcom(bc):
     return "\n".join([asm_com(c) for c in bc.children])
 
+def asm_func(f):
+    C = asm_bcom(f.children[2])
+    nbre_child=len(f.children)
+    if nbre_child==4:
+        E = asm_exp(f.children[3])
+        s = ""
+        for i in range(len(f.children[1].children)):
+            v = f.children[1].children[i].value
+            e = f"""
+    mov rax, [rbp+{8+8*(i+1)}]
+    mov [{v}], rax
+        """
+            s = s + e
+        return f"""
+{f.children[0].children[0].value}:
+    push rbp
+    mov rbp, rsp
+    
+    sub rsp, 8*{len(f.children[1].children)}
+    
+    push rdi
+    push rsi
+    
+    {s}
+    {C}
+    {E}
+    pop rsi
+    pop rdi
+    mov rsp, rbp
+    pop rbp
+    ret
+    """
+    else:
+        s = ""
+        for i in range(len(f.children[1].children)):
+            v = f.children[1].children[i].value
+            e = f"""
+    mov rax, [rbp+{8+8*(i+1)}]
+    mov [{v}], rax
+        """
+            s = s + e
+        return f"""
+{f.children[0].children[0].value}:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 8*{len(f.children[1].children)}
+    push rdi
+    push rsi
+    {s}
+    {C}
+    nop
+    xor rax, rax
+    pop rsi
+    pop rdi
+    mov rsp, rbp
+    pop rbp
+    ret
+    """
+
+def asm_bfunc(bf):
+    return "\n".join([asm_func(f) for f in bf.children])
+
 def asm_prg(p):
     f = open("moule.asm")
     moule = f.read()
-
-    C = asm_bcom(p.children[1])
+    
+    C = asm_bcom(p.children[2])
     moule = moule.replace("BODY", C)
-
-    E = asm_exp(p.children[2])
+    
+    E = asm_exp(p.children[3])
     moule = moule.replace("RETURN", E)
 
     D = "\n".join([f"{v} : dq 0" for v in vars_prg(p)])
     moule = moule.replace("DECL_VARS", D)
 
     s = ""
-    for i in range(len(p.children[0].children)):
-        v = p.children[0].children[i].value
+    for i in range(len(p.children[1].children)):
+        v = p.children[1].children[i].value
         e = f"""
-        mov rbx, [argv]
-        mov rdi, [rbx + {8*(i+1)}]
-        xor rax, rax
-        call atoi
-        mov [{v}], rax
+    mov rbx, [argv]
+    mov rdi, [rbx + {8*(i+1)}]
+    xor rax, rax
+    call atoi
+    mov [{v}], rax
         """
         s = s + e
     moule = moule.replace("INIT_VARS", s)
+    f=f"""{asm_bfunc(p.children[0])}"""
+    moule = moule.replace("FUNC", f)
     return moule
 
 def vars_exp(e):
@@ -218,8 +270,6 @@ def vars_com(c):
         return E | B
     elif c.data == "print":
         return vars_exp(c.children[0])
-    elif c.data == "function":
-        return vars_func(c.children[0])
 
 def vars_bcom(bc):
     S = set()
@@ -238,7 +288,7 @@ def vars_prg(p):
     L = set([t.value for t in p.children[1].children])
     C = vars_bcom(p.children[2])
     E = vars_exp(p.children[3])
-    return F | L | C | E
+    return L | C | E | F
 
 def pp_exp(e, ntab = 0):
     tabulation = ntab * tab
@@ -286,10 +336,6 @@ def pp_com(c, ntab = 0):
         
     elif c.data == "print":
         return f"{tabulation}print({pp_exp(c.children[0])});"
-    
-
-    elif c.data == "function":
-        return f"{tabulation}{pp_func(c.children[0], ntab)}"
 
 def pp_bcom(bc, ntab = 0):
     return "\n".join([pp_com(c, ntab) for c in bc.children])
@@ -330,29 +376,26 @@ def pp_name(n):
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
 ast = grammaire.parse("""
-    g(y){
-        return y;
-    }
-    
-    h(b){
-        return 2*b;
-    }
-    
-    main(x){
-        f(x, q){
-            return x+x;
+    f(x,a){
+        while(x){
+            a=a*a;
+            x=x-1;
         }
-        return f(5, x);
+        return a;
+    }
+    main(d,s){
+        c=f(d,s);
+        return c;
     }
 """
 )
 
-print(ast)
+"""print(ast)
 
 pp = pp_prg(ast)
-print('\n'+pp)
-print(vars_prg(ast))
-"""asm = asm_prg(ast)
-f = open("ouf.asm", "w")
+print('\n'+pp)"""
+
+asm = asm_prg(ast)
+f = open("ouf_func.asm", "w")
 f.write(asm)
-f.close()"""
+f.close()
