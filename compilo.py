@@ -14,8 +14,6 @@ com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "while" "(" exp ")" "{" bcom "}"                              -> while
 | "print" "(" exp ")" ";"                                       -> print
 
-| func                                                          -> function
-
 bcom : (com)*
 
 func : name "(" var_list ")" "{" bcom ("return" exp ";")? "}"
@@ -43,7 +41,7 @@ tab = "    "
 g = "{"
 d = "}"
 
-op = {'+' : 'add', '-' : 'sub'}
+op = {'+' : 'add', '-' : 'sub', '*' : 'imul', '/' : 'idiv'}
 
 def asm_exp(e):
     if e.data == "exp_nombre":
@@ -56,17 +54,24 @@ def asm_exp(e):
         E1 = asm_exp(e.children[0])
         E2 = asm_exp(e.children[2])
         return f"""
-        {E2}
-        push rax
-        {E1}
-        pop rbx
-        {op[e.children[1].value]} rax, rbx
+    {E2}
+    push rax
+    {E1}
+    pop rbx
+    {op[e.children[1].value]} rax, rbx
         """
     else:
-        D = "\n".join([f"push {v}" for v in reversed(e.children[1].children)])
+        s=""
+        for i in range(len(e.children[1].children)):
+            temp=f"""
+    mov rax, [{e.children[1].children[len(e.children[1].children)-1-i]}]
+    push rax 
+            """
+            s=s+temp
         return f"""
-    {D}
+    {s}
     call {e.children[0].children[0]}
+    add rsp, 8*{len(e.children[1].children)}
         """
 
 cpt = 0
@@ -113,32 +118,6 @@ def asm_com(c):
     mov rsi, rax
     call printf
         """
-    else:
-        C = asm_bcom(c.children[0].children[2])
-        nbre_child=len(c.children[0].children)
-        if nbre_child==4:
-            E = asm_exp(c.children[0].children[3])
-            return f"""
-            {c.children[0].children[0].children[0].value}:
-    push rbp
-    mov rbp, rsp
-    mov rsp, [rbp-8]
-    {C}
-    {E}
-    mov rsp, rax
-    mov rsp, rbp
-    pop rbp
-    ret
-            """
-            
-        else:
-            return f"""
-            {c.children[0].children[0].children[0].value}:
-    push rbp
-    mov rbp, rsp
-    mov rsp, [rbp-8]
-    {C}
-            """
 
 def asm_bcom(bc):
     return "\n".join([asm_com(c) for c in bc.children])
@@ -148,28 +127,58 @@ def asm_func(f):
     nbre_child=len(f.children)
     if nbre_child==4:
         E = asm_exp(f.children[3])
+        s = ""
+        for i in range(len(f.children[1].children)):
+            v = f.children[1].children[i].value
+            e = f"""
+    mov rax, [rbp+{8+8*(i+1)}]
+    mov [{v}], rax
+        """
+            s = s + e
         return f"""
 {f.children[0].children[0].value}:
     push rbp
     mov rbp, rsp
-    mov rdi, [rbx+8]
-    xor rax, rax
-    call atoi
-    mov [y], rax
+    
+    sub rsp, 8*{len(f.children[1].children)}
+    
+    push rdi
+    push rsi
+    
+    {s}
     {C}
     {E}
-    mov rsp, rax
+    pop rsi
+    pop rdi
     mov rsp, rbp
     pop rbp
     ret
-    """ 
+    """
     else:
+        s = ""
+        for i in range(len(f.children[1].children)):
+            v = f.children[1].children[i].value
+            e = f"""
+    mov rax, [rbp+{8+8*(i+1)}]
+    mov [{v}], rax
+        """
+            s = s + e
         return f"""
 {f.children[0].children[0].value}:
     push rbp
     mov rbp, rsp
-    mov rsp, [rbp-8]
+    sub rsp, 8*{len(f.children[1].children)}
+    push rdi
+    push rsi
+    {s}
     {C}
+    nop
+    xor rax, rax
+    pop rsi
+    pop rdi
+    mov rsp, rbp
+    pop rbp
+    ret
     """
 
 def asm_bfunc(bf):
@@ -240,8 +249,6 @@ def vars_com(c):
         return E | B
     elif c.data == "print":
         return vars_exp(c.children[0])
-    elif c.data == "function":
-        return vars_func(c.children[0])
 
 def vars_bcom(bc):
     S = set()
@@ -295,10 +302,6 @@ def pp_com(c, ntab = 0):
         
     elif c.data == "print":
         return f"{tabulation}print({pp_exp(c.children[0])});"
-    
-
-    elif c.data == "function":
-        return f"{tabulation}{pp_func(c.children[0], ntab)}"
 
 def pp_bcom(bc, ntab = 0):
     return "\n".join([pp_com(c, ntab) for c in bc.children])
@@ -339,11 +342,16 @@ def pp_name(n):
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
 ast = grammaire.parse("""
-    f(y){
-        return y;
+    f(x,a){
+        while(x){
+            a=a*a;
+            x=x-1;
+        }
+        return a;
     }
-    main(x){
-        return f(x);
+    main(d,s){
+        c=f(d,s);
+        return c;
     }
 """
 )

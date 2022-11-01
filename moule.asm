@@ -6,10 +6,10 @@ argv : dq 0
 DECL_VARS
 
 section .text
+global main
 
 FUNC
 
-global main
 main :
     push rbp
     mov [argc], rdi
