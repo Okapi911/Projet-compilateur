@@ -70,7 +70,7 @@ def asm_exp(e):
 
             s=""
             for i in range(len(e.children[1].children)):
-                if(e.children[1].children[0].data == "var_arg"):
+                if(e.children[1].children[len(e.children[1].children)-1-i].data == "var_arg"):
                     temp=f"""
     mov rax, [{e.children[1].children[len(e.children[1].children)-1-i].children[0].children[0].value}]
     push rax 
@@ -383,12 +383,18 @@ def pp_name(n):
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
 ast = grammaire.parse("""
-    f(a){
-        return a;
+    somme(a, b, c, d, e, f, g, h, i){
+        temp = a+b+c+d+e+f+g+h+i;
+        return temp;
     }
-    main(b){
-        c=f(b);
-        d=f(4);
+    
+    carre(a){
+        return a*a;
+    }
+    
+    main(prout){
+        c=somme(1,2,3,prout,5,6,7,8,9);
+        d=carre(12);
         return c+d;
     }
 """
