@@ -12,7 +12,7 @@ exp : SIGNED_NUMBER                                             -> exp_nombre
 | NULL                                                          -> exp_null
 
 com : IDENTIFIER "=" exp ";"                                    -> assignation
-| PIDENTIFIER "=" exp ";"                                        -> p_assignation
+| PIDENTIFIER "=" exp ";"                                       -> p_assignation
 | "if" "(" exp ")" "{" bcom "}"                                 -> if
 | "if" "(" exp ")" "{" bcom "}" "else" "{" bcom "}"             -> if_else
 | "while" "(" exp ")" "{" bcom "}"                              -> while
@@ -29,7 +29,9 @@ cls : "class" IDENTIFIER "{" IDENTIFIER "(" var_list ")" "{" bcom "}" "}"       
 var_list :                                                      -> vide
 | IDENTIFIER ("," IDENTIFIER)*                                  -> aumoinsune
 
-PIDENTIFIER : "this."/[a-zA-Z][a-zA-Z0-9]*/
+PIDENTIFIER : IDENTIFIER "." IDENTIFIER
+
+name : IDENTIFIER
 
 IDENTIFIER : /[a-zA-Z][a-zA-Z0-9]*/
 
@@ -41,13 +43,13 @@ OPBIN : /[+\-*>]/
 %import common.SIGNED_NUMBER
 %ignore WS
 """, 
-start="cls")
+start="prg")
 
 tab = "    "
 g = "{"
 d = "}"
 
-op = {'+' : 'add', '-' : 'sub'}
+op = {'+' : 'add', '-' : 'sub', '*' : 'imul'}
 
 def asm_exp(e):
     if e.data == "exp_nombre":
@@ -66,6 +68,29 @@ def asm_exp(e):
         pop rbx
         {op[e.children[1].value]} rax, rbx
         """
+    elif e.data == "exp_null":
+        return f"""
+    mov rax, NULL
+    """
+    elif e.data == "exp_appel":
+        s=""
+        for i in range(len(e.children[1].children)):
+            temp=f"""
+    mov rax, [{e.children[1].children[len(e.children[1].children)-1-i].value}]
+    push rax 
+            """
+            s=s+temp
+        return f"""
+    {s}
+    call {e.children[0]}
+    add rsp, 8*{len(e.children[1].children)}
+                """
+    elif e.data == "exp_pvar":
+        temp = e.children[0].value.split(".")
+        return f"""
+    call get_{temp[1]}
+    mov [{e.children[0].value}], rax
+    mov rax, [{e.children[0].value}]"""
 
 cpt = 0
 def next():
@@ -74,29 +99,58 @@ def next():
     return cpt
 
 def asm_class(cls):
-
-
-
-
-    return f"""{cls.children[0]} :
-    push rbp
-    mov rsp, rbp
-    {asm_bcom(cls.children[3])}
+    C = asm_bcom(cls.children[3])
+    s = ""
+    for i in range(len(cls.children[2].children)):
+        v = cls.children[2].children[i].value
+        e = f"""
+    mov rax, [rbp+{8+8*(i+1)}]
+    mov [{v}], rax
+        """
+        s = s + e
+    t = ""
+    temp = cls.children[3].children[1].children[0].split(".")
+    for i in range(len(cls.children[2].children)):
+        w = f"""
+get_{cls.children[2].children[i].value}:
+    mov rax, [{temp[0]}.{cls.children[2].children[i].value}]
+    ret
     """
+        t=t+w
+    return f"""
+{cls.children[0].value}:
+    push rbp
+    mov rbp, rsp
+    
+    sub rsp, 8*{len(cls.children[2].children)}
+    
+    push rdi
+    push rsi
+    
+    {s}
+    {C}
+    pop rsi
+    pop rdi
+    mov rsp, rbp
+    pop rbp
+    ret
+    {t}
+    """
+
+def asm_bclass(bcls):
+    return "\n".join([asm_class(cls) for cls in bcls.children])
 
 def asm_com(c):
     if c.data == "assignation":
-        if c.children[1].data == "exp_nombre" or c.children[1].data == "exp_var":
-            E1 = asm_exp(c.children[1])
-            return f"""
-            {E1}
-            mov [{c.children[0].value}], rax 
-            """
-        elif c.children[1].data == "exp_appel":
-            pass
+        E1 = asm_exp(c.children[1])
+        return f"""
+        {E1}
+        mov [{c.children[0].value}], rax 
+        """
+        
     elif c.data == "p_assignation":
         E1 = asm_exp(c.children[1])
-            return f"""
+        return f"""
             {E1}
             mov [{c.children[0].value}], rax 
             """
@@ -138,19 +192,19 @@ def asm_bcom(bc):
 def asm_prg(p):
     f = open("moule.asm")
     moule = f.read()
-
-    C = asm_bcom(p.children[1])
+    
+    C = asm_bcom(p.children[2])
     moule = moule.replace("BODY", C)
-
-    E = asm_exp(p.children[2])
+    
+    E = asm_exp(p.children[3])
     moule = moule.replace("RETURN", E)
 
     D = "\n".join([f"{v} : dq 0" for v in vars_prg(p)])
     moule = moule.replace("DECL_VARS", D)
 
     s = ""
-    for i in range(len(p.children[0].children)):
-        v = p.children[0].children[i].value
+    for i in range(len(p.children[1].children)):
+        v = p.children[1].children[i].value
         e = f"""
         mov rbx, [argv]
         mov rdi, [rbx + {8*(i+1)}]
@@ -160,6 +214,8 @@ def asm_prg(p):
         """
         s = s + e
     moule = moule.replace("INIT_VARS", s)
+    cls=f"""{asm_bclass(p.children[0])}"""
+    moule = moule.replace("CLASS", cls)
     return moule
 
 def vars_exp(e):
@@ -169,6 +225,13 @@ def vars_exp(e):
         return {e.children[0].value}
     elif e.data == "exp_par":
         return vars_exp(e.children[0])
+    elif e.data == "exp_pvar":
+        return {e.children[0].value}
+    elif e.data == "exp_appel":
+        L = set([t.value for t in e.children[1].children])
+        return L
+    elif e.data == "exp_null":
+        pass
     else:
         L = vars_exp(e.children[0])
         R = vars_exp(e.children[2])
@@ -176,6 +239,9 @@ def vars_exp(e):
 
 def vars_com(c):
     if c.data == "assignation":
+        R = vars_exp(c.children[1])
+        return {c.children[0].value} | R
+    if c.data == "p_assignation":
         R = vars_exp(c.children[1])
         return {c.children[0].value} | R
     elif c.data == "if":
@@ -195,11 +261,23 @@ def vars_bcom(bc):
         S = S | vars_com(c)
     return S
 
+def vars_class(cls):
+    L = set([v.value for v in cls.children[2].children])
+    M  = vars_bcom(cls.children[3])
+    return L | M
+
+def vars_bclass(bcls):
+    S = set()
+    for cls in bcls.children:
+        S = S | vars_class(cls)
+    return S
+
 def vars_prg(p):
-    L = set([t.value for t in p.children[0].children])
-    C = vars_bcom(p.children[1])
-    E = vars_exp(p.children[2])
-    return L | C | E
+    CLA = vars_bclass(p.children[0])
+    L = set([t.value for t in p.children[1].children])
+    C = vars_bcom(p.children[2])
+    E = vars_exp(p.children[3])
+    return L | C | E | CLA
 
 def pp_exp(e, ntab = 0):
     tabulation = ntab * tab
@@ -268,22 +346,28 @@ def pp_prg(p):
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
 ast = grammaire.parse("""
-class A{
-    A(a,b,c){
-        this.c = this.a + 37 + a + b+ c;
+class Point{
+    Point(x,y){
+        tree.x = x;
+        tree.y = y;
     }
+}
+main(a,b){
+    pt = Point(a,b);
+    distanceAOrigine = pt.x*pt.x+pt.y*pt.y;
+    return distanceAOrigine;
 }
 """)
 
-print(ast)
-print(pp_cls(ast))
+"""print(ast)
+print(pp_prg(ast))"""
 
 
 """
 print(asm_class(ast))"""
 
-"""asm = asm_prg(ast)
+asm = asm_prg(ast)
 
 f = open("ouf.asm", "w")
 f.write(asm)
-f.close()"""
+f.close()

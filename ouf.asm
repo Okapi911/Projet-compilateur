@@ -3,60 +3,129 @@ section .data
 fmt : db "%d", 10, 0
 argc : dq 0
 argv : dq 0
+a : dq 0
+pt : dq 0
+tree.y : dq 0
+pt.y : dq 0
+y : dq 0
+b : dq 0
+pt.x : dq 0
+tree.x : dq 0
+distanceAOrigine : dq 0
 x : dq 0
-$y : dq 0
 
 section .text
 global main
+
+
+Point:
+    push rbp
+    mov rbp, rsp
+    
+    sub rsp, 8*2
+    
+    push rdi
+    push rsi
+    
+    
+    mov rax, [rbp+16]
+    mov [x], rax
+        
+    mov rax, [rbp+24]
+    mov [y], rax
+        
+    
+            mov rax, [x]
+
+            mov [tree.x], rax 
+            
+
+            mov rax, [y]
+
+            mov [tree.y], rax 
+            
+    pop rsi
+    pop rdi
+    mov rsp, rbp
+    pop rbp
+    ret
+    
+get_x:
+    mov rax, [tree.x]
+    ret
+    
+get_y:
+    mov rax, [tree.y]
+    ret
+    
+    
+
 main :
     push rbp
     mov [argc], rdi
     mov [argv], rsi
     
         mov rbx, [argv]
-        mov rdi, [rbx +8]
+        mov rdi, [rbx + 8]
         xor rax, rax
         call atoi
-        mov[x], rax
+        mov [a], rax
         
         mov rbx, [argv]
-        mov rdi, [rbx +16]
+        mov rdi, [rbx + 16]
         xor rax, rax
         call atoi
-        mov[$y], rax
+        mov [b], rax
         
     
-        debut1 : mov rax, [x]
+        
+    
+    mov rax, [b]
+    push rax 
+            
+    mov rax, [a]
+    push rax 
+            
+    call Point
+    add rsp, 8*2
+                
+        mov [pt], rax 
+        
 
-        cmp rax, 0
-        jz fin1
         
         
-        mov rax, 1
-
+    call get_y
+    mov [pt.y], rax
+    mov rax, [pt.y]
         push rax
-        mov rax, [x]
-
+        
+        
+    call get_y
+    mov [pt.y], rax
+    mov rax, [pt.y]
+        push rax
+        
+        
+    call get_x
+    mov [pt.x], rax
+    mov rax, [pt.x]
+        push rax
+        
+    call get_x
+    mov [pt.x], rax
+    mov rax, [pt.x]
         pop rbx
-        sub rax, rbx
+        imul rax, rbx
         
-        mov [x], rax
-        
-        
-        mov rax, 1
-
-        push rax
-        mov rax, [$y]
-
         pop rbx
         add rax, rbx
         
-        mov [$y], rax
+        pop rbx
+        imul rax, rbx
         
-        jmp debut1
-        fin1 : nop
+        mov [distanceAOrigine], rax 
         
-    mov rax, [$y]
+    mov rax, [distanceAOrigine]
 
     mov rdi, fmt
     mov rsi, rax
