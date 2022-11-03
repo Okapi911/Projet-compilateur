@@ -7,6 +7,9 @@ DECL_VARS
 
 section .text
 global main
+
+FUNC
+
 main :
     push rbp
     mov [argc], rdi
