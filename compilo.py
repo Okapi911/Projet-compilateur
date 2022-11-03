@@ -8,7 +8,7 @@ exp : SIGNED_NUMBER                                             -> exp_nombre
 | PIDENTIFIER                                                   -> exp_pvar
 | exp OPBIN exp                                                 -> exp_opbin
 | "(" exp ")"                                                   -> exp_par
-| IDENTIFIER "(" var_list ")"                                   -> exp_appel
+| IDENTIFIER "(" var_list ")"                                   -> exp_appel_class
 | NULL                                                          -> exp_null
 
 com : IDENTIFIER "=" exp ";"                                    -> assignation
@@ -27,9 +27,9 @@ prg : bcls "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"
 cls : "class" IDENTIFIER "{" IDENTIFIER "(" var_list ")" "{" bcom "}" "}"                   -> declaration_class
 
 var_list :                                                      -> vide
-| IDENTIFIER ("," IDENTIFIER)*                                  -> aumoinsune
+| (IDENTIFIER|PIDENTIFIER|SIGNED_NUMBER) ("," (IDENTIFIER|PIDENTIFIER|SIGNED_NUMBER))*            -> aumoinsune
 
-PIDENTIFIER : "this."/[a-zA-Z][a-zA-Z0-9]*/
+PIDENTIFIER : (/[a-zA-Z][a-zA-Z0-9]*/".")+ /[a-zA-Z][a-zA-Z0-9]*/
 
 IDENTIFIER : /[a-zA-Z][a-zA-Z0-9]*/
 
@@ -41,7 +41,7 @@ OPBIN : /[+\-*>]/
 %import common.SIGNED_NUMBER
 %ignore WS
 """, 
-start="cls")
+start="prg")
 
 tab = "    "
 g = "{"
@@ -54,6 +54,14 @@ def asm_exp(e):
         return f"mov rax, {e.children[0].value}\n"
     elif e.data == "exp_var":
         return f"mov rax, [{e.children[0].value}]\n"
+    elif e.data == "exp_pvar":
+
+        nom = e.children[0].value
+        if "this" in nom:
+            pass
+        
+        return f"mov rax, [rbp - {give_address_attribute(e.children[0].value)}]\n"
+
     elif e.data == "exp_par":
         return asm_exp(e.children[0])
     elif e.data == "exp_opbin":
@@ -66,6 +74,21 @@ def asm_exp(e):
         pop rbx
         {op[e.children[1].value]} rax, rbx
         """
+    elif e.data == "exp_appel_class":
+        variables = e.children[1]
+        s = f"""
+            sub rsp, {sizePerClass[e.children[0].value]}
+
+            lea rax, [rbp - {sizePerClass[e.children[0].value]}]
+            mov rdi, rax
+            """
+        for v in reversed(variables.children):
+            E = f"""
+            mov rax, {v}
+            push rax
+            """
+            s = s + E
+        return s
 
 cpt = 0
 def next():
@@ -73,33 +96,48 @@ def next():
     cpt += 1
     return cpt
 
-def asm_class(cls):
-
-
-
-
-    return f"""{cls.children[0]} :
-    push rbp
-    mov rsp, rbp
-    {asm_bcom(cls.children[3])}
-    """
 
 def asm_com(c):
     if c.data == "assignation":
-        if c.children[1].data == "exp_nombre" or c.children[1].data == "exp_var":
+        if c.children[1].data == "exp_nombre" or c.children[1].data == "exp_var" or c.children[1].data == "exp_opbin":
             E1 = asm_exp(c.children[1])
             return f"""
             {E1}
             mov [{c.children[0].value}], rax 
             """
-        elif c.children[1].data == "exp_appel":
-            pass
+        elif c.children[1].data == "exp_appel_class":
+            place = find_place(c.children[1].children[0])
+            objectsCreated.append((c.children[0].value, place))
+            return f"""
+            
+            {asm_exp(c.children[1])}
+            call {c.children[1].children[0]}
+
+            mov rsp, rbp
+            """
+        else:
+            return ""
     elif c.data == "p_assignation":
         E1 = asm_exp(c.children[1])
+
+        if "this" in c.children[0].value:
+
+            attribut = c.children[0].value.split(".")[1]
+            nomClass = find_cls(attribut)
+            decalage = len(attributs[nomClass]) - attributs[nomClass].index(c.children[0].value) - 1
+
             return f"""
             {E1}
-            mov [{c.children[0].value}], rax 
+
+            mov rdx, rax
+            mov rax, [rbp-8]
+            mov [rax + {8 * decalage}], rdx 
             """
+
+        return f"""
+        {E1}
+        mov [{(c.children[0].value + "") .replace(".", "$")}], rax 
+        """
     elif c.data == "if":
         E1 = asm_exp(c.children[0])
         C1 = asm_bcom(c.children[1])
@@ -111,6 +149,7 @@ def asm_com(c):
         {C1}
         fin{n} : nop
         """
+    
     elif c.data == "while":
         E1 = asm_exp(c.children[0])
         C1 = asm_bcom(c.children[1])
@@ -135,22 +174,47 @@ def asm_com(c):
 def asm_bcom(bc):
     return "\n".join([asm_com(c) for c in bc.children])
 
+def asm_cls(cls):
+
+    s = f""""""
+
+    for i in range(len(cls.children[2].children)):
+        v = cls.children[2].children[i].value
+        e = f"""
+        mov rax, [rbp+{8*(i+2)}]
+        mov [{v}], rax
+        """
+        s = s + e
+
+    s = s + f"""
+        mov [rbp-8], rdi
+        """
+
+    return f"""{cls.children[0]} :
+    push rbp
+    mov rbp, rsp
+
+    {s}
+
+    {asm_bcom(cls.children[3])}
+
+    pop rbp
+    ret
+    """
+
+def asm_bcls(bcls):
+    return "\n".join([asm_cls(c) for c in bcls.children])
+
 def asm_prg(p):
     f = open("moule.asm")
     moule = f.read()
-
-    C = asm_bcom(p.children[1])
-    moule = moule.replace("BODY", C)
-
-    E = asm_exp(p.children[2])
-    moule = moule.replace("RETURN", E)
-
+    
     D = "\n".join([f"{v} : dq 0" for v in vars_prg(p)])
     moule = moule.replace("DECL_VARS", D)
 
     s = ""
     for i in range(len(p.children[0].children)):
-        v = p.children[0].children[i].value
+        v = p.children[1].children[i].value
         e = f"""
         mov rbx, [argv]
         mov rdi, [rbx + {8*(i+1)}]
@@ -160,22 +224,65 @@ def asm_prg(p):
         """
         s = s + e
     moule = moule.replace("INIT_VARS", s)
+
+    CLS = asm_bcls(p.children[0])
+    moule = moule.replace("DECL_CLS", CLS)
+
+    C = asm_bcom(p.children[2])
+    moule = moule.replace("BODY", C)
+
+    E = asm_exp(p.children[3])
+    moule = moule.replace("RETURN", E)
+
     return moule
+
+varsPerClass = {}
+attributs = {}
+sizePerClass = {}
+objectsCreated = []
 
 def vars_exp(e):
     if e.data == "exp_nombre":
         return set()
     elif e.data == "exp_var":
         return {e.children[0].value}
+    elif e.data == "exp_pvar":
+        variable = (e.children[0].value + "").replace(".", "$")
+        return {variable}
     elif e.data == "exp_par":
         return vars_exp(e.children[0])
-    else:
+    elif e.data == "exp_opbin":
         L = vars_exp(e.children[0])
         R = vars_exp(e.children[2])
         return L | R
+    
+def vars_cls(cls):
+    
+    VL = set([t.value for t in cls.children[2].children])
+    BC = vars_bcom(cls.children[3])
 
+    varsPerClass[cls.children[0].value] = VL | BC
+    attributs[cls.children[0].value] = [var for var in varsPerClass[cls.children[0].value] if "this" in var]
+    for k in attributs.keys():
+        attributs[k] = sorted(attributs[k])
+    sizePerClass[cls.children[0].value] = 8 * len(attributs[cls.children[0].value])
+
+def vars_bcls(bcls):
+    for cls in bcls.children:
+        vars_cls(cls)
+
+def vars_call_cls(call, var_name):
+    var_to_adapt = varsPerClass[call.children[0]]
+    return set([v.replace("this", var_name).replace(".", "$") for v in var_to_adapt]) | {var_name.value}
+    
 def vars_com(c):
     if c.data == "assignation":
+        if c.children[1].data == "exp_appel_class":
+            return vars_call_cls(c.children[1], c.children[0])
+        else:
+            R = vars_exp(c.children[1])
+            return {c.children[0].value} | R
+    elif c.data == "p_assignation":
         R = vars_exp(c.children[1])
         return {c.children[0].value} | R
     elif c.data == "if":
@@ -196,9 +303,10 @@ def vars_bcom(bc):
     return S
 
 def vars_prg(p):
-    L = set([t.value for t in p.children[0].children])
-    C = vars_bcom(p.children[1])
-    E = vars_exp(p.children[2])
+    vars_bcls(p.children[0])
+    L = set([t.value for t in p.children[1].children])
+    C = vars_bcom(p.children[2])
+    E = vars_exp(p.children[3])
     return L | C | E
 
 def pp_exp(e, ntab = 0):
@@ -215,8 +323,10 @@ def pp_exp(e, ntab = 0):
         return "NULL"
     elif e.data == "exp_appel":
         return f"{e.children[0].value}({pp_varlist(e.children[1])})"
-    else:
+    elif e.data == "exp_opbin":
         return f"{tabulation}{pp_exp(e.children[0])} {e.children[1].value} {pp_exp(e.children[2])}"
+    elif e.data == "exp_appel_class":
+        return f"{e.children[0].value}({pp_varlist(e.children[1])})"
 
 def pp_com(c, ntab = 0):
     tabulation = ntab * tab
@@ -262,28 +372,65 @@ def pp_prg(p):
     d = "}"
     return f"{pp_bcls(p.children[0])} \n\nmain ({pp_varlist(p.children[1])}) {g} \n{pp_bcom(p.children[2], 1)} \n    return {pp_exp(p.children[3])}; \n{d}"
 
+def find_cls(attribut):
+    nom = f"""this.{attribut}"""
+    for cls in attributs:
+        if nom in attributs[cls]:
+            return cls
+
+def find_place(cls):
+    if len(objectsCreated) == 0:
+        return sizePerClass[cls]
+    else:
+        return objectsCreated[-1][1] + sizePerClass[cls]
+
+#element de la forme aaa.bbb
+def give_address_attribute(element):
+
+    objet = element.split(".")[0]
+    attribut = element.split(".")[1]
+
+    classe = find_cls(attribut)
+
+    for obj in objectsCreated:
+        if obj[0] == objet:
+            place_memoire = obj[1]
+            break
+
+    numero_attribut = attributs[classe].index(f"this.{attribut}")
+    return place_memoire - 8*(len(attributs[classe]) - numero_attribut - 1)
+
+
+
 #ast = grammaire.parse("a = a + 1;")
 #ast = grammaire.parse("main (x, y) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} else {a = y;} return a;}")
 #ast = grammaire.parse("main (x, y, z) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} return a;}")
 #ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
 
+
 ast = grammaire.parse("""
-class A{
-    A(a,b,c){
-        this.c = this.a + 37 + a + b+ c;
+class Vecteur{
+    Vecteur(f, s){
+        this.first = f;
+        this.second = s;
     }
 }
+
+main(A){
+    vec1 = Vecteur(1000, 2000);
+    return vec1.first;
+}
+
 """)
 
-print(ast)
-print(pp_cls(ast))
 
+#print(pp_prg(ast))
+#print(asm_class(ast))
 
-"""
-print(asm_class(ast))"""
-
-"""asm = asm_prg(ast)
-
-f = open("ouf.asm", "w")
+asm = asm_prg(ast)
+print(sizePerClass)
+print(objectsCreated)
+print(attributs)
+f = open("class4.asm", "w")
 f.write(asm)
-f.close()"""
+f.close()

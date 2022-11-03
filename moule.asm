@@ -5,10 +5,17 @@ argc : dq 0
 argv : dq 0
 DECL_VARS
 
+
+
 section .text
 global main
+
+DECL_CLS
+
+
 main :
     push rbp
+    mov rbp, rsp
     mov [argc], rdi
     mov [argv], rsi
     INIT_VARS
