@@ -12,6 +12,7 @@ global main
 
 DECL_CLS
 
+FUNC
 
 main :
     push rbp

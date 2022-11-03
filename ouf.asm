@@ -14,16 +14,16 @@ main :
     mov [argv], rsi
     
         mov rbx, [argv]
-        mov rdi, [rbx +8]
+        mov rdi, [rbx + 8]
         xor rax, rax
         call atoi
-        mov[x], rax
+        mov [x], rax
         
         mov rbx, [argv]
-        mov rdi, [rbx +16]
+        mov rdi, [rbx + 16]
         xor rax, rax
         call atoi
-        mov[$y], rax
+        mov [y], rax
         
     
         debut1 : mov rax, [x]
@@ -40,8 +40,9 @@ main :
         pop rbx
         sub rax, rbx
         
-        mov [x], rax
+        mov [x], rax 
         
+
         
         mov rax, 1
 
@@ -51,7 +52,7 @@ main :
         pop rbx
         add rax, rbx
         
-        mov [$y], rax
+        mov [y], rax 
         
         jmp debut1
         fin1 : nop
