@@ -75,8 +75,6 @@ def asm_exp(e):
         {op[e.children[1].value]} rax, rbx
         """
     elif e.data == "exp_appel_class":
-        variables = e.children[1]
-        print(e.children[1].children)
         s = f"""
             sub rsp, {sizePerClass[e.children[0].value]}
 
@@ -193,6 +191,7 @@ def asm_cls(cls):
 
     s = s + f"""
         mov [rbp-8], rdi
+        sub rsp, 16
         """
 
     return f"""{cls.children[0]} :
@@ -203,6 +202,7 @@ def asm_cls(cls):
 
     {asm_bcom(cls.children[3])}
 
+    mov rsp, rbp
     pop rbp
     ret
     """
@@ -424,11 +424,8 @@ class Vecteur{
 
 main(A){
     vec1 = Vecteur(1000, 2000);
-    a = vec1.first + 1;
-    vec2 = Vecteur(a, 200);
-    b = vec1.second + vec2.first + 10;
-    vec3 = Vecteur(a, b);
-    return vec3.second;
+    vec3 = Vecteur(10, 100);
+    return vec3.first;
 }
 
 """)
