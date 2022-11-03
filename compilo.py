@@ -257,7 +257,6 @@ def vars_exp(e):
         return {e.children[0].value}
     elif e.data == "exp_pvar":
         variable = (e.children[0].value + "").replace(".", "$")
-        #return {variable}
         return set()
     elif e.data == "exp_par":
         return vars_exp(e.children[0])
@@ -281,18 +280,11 @@ def vars_cls(cls):
 def vars_bcls(bcls):
     for cls in bcls.children:
         vars_cls(cls)
-"""
-def vars_call_cls(call, var_name):
-    var_to_adapt = varsPerClass[call.children[0]]
-    return set([v for v in var_to_adapt if "." not in v]) | {var_name.value}
-    #return set([v.replace("this", var_name).replace(".", "$") for v in var_to_adapt]) | {var_name.value}
-    #return {var_name.value}"""
-    
+
 def vars_com(c):
 
     if c.data == "assignation":
         if c.children[1].data == "exp_appel_class":
-            #return vars_call_cls(c.children[1], c.children[0])
             return {c.children[0]}
         else:
             R = vars_exp(c.children[1])
@@ -427,14 +419,6 @@ def give_address_attribute(element):
     numero_attribut = attributs[classe].index(f"this.{attribut}")
     return place_memoire - 8*(len(attributs[classe]) - numero_attribut - 1)
 
-
-
-#ast = grammaire.parse("a = a + 1;")
-#ast = grammaire.parse("main (x, y) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} else {a = y;} return a;}")
-#ast = grammaire.parse("main (x, y, z) {if(x>y) {while (x>5) {x = x - 1; print(x);} a = x;} return a;}")
-#ast = grammaire.parse("main (x, y) { x = x + y; return x;} ")
-
-
 ast = grammaire.parse("""
 class Vecteur{
     Vecteur(f, s){
@@ -451,16 +435,7 @@ main(A){
 
 """)
 
-
-#print(pp_prg(ast))
-#print(asm_class(ast))
-
 asm = asm_prg(ast)
-print(sizePerClass)
-print(objectsCreated)
-print(attributs)
-print(varsPerClass)
-
 
 f = open("class4.asm", "w")
 f.write(asm)
