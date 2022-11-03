@@ -76,15 +76,22 @@ def asm_exp(e):
         """
     elif e.data == "exp_appel_class":
         variables = e.children[1]
+        print(e.children[1].children)
         s = f"""
             sub rsp, {sizePerClass[e.children[0].value]}
 
-            lea rax, [rbp - {sizePerClass[e.children[0].value]}]
+            lea rax, [rbp - {objectsCreated[-1][1]}]
             mov rdi, rax
             """
-        for v in reversed(variables.children):
-            E = f"""
+        for v in reversed(e.children[1].children):
+            if v.type == "SIGNED_NUMBER":
+                E = f"""
             mov rax, {v}
+            push rax
+            """
+            else:
+                E = f"""
+            mov rax, [{v}]
             push rax
             """
             s = s + E
@@ -112,8 +119,6 @@ def asm_com(c):
             
             {asm_exp(c.children[1])}
             call {c.children[1].children[0]}
-
-            mov rsp, rbp
             """
         else:
             return ""
@@ -411,14 +416,19 @@ def give_address_attribute(element):
 ast = grammaire.parse("""
 class Vecteur{
     Vecteur(f, s){
-        this.first = f;
+        temp = f + s;
+        this.first = temp;
         this.second = s;
     }
 }
 
 main(A){
     vec1 = Vecteur(1000, 2000);
-    return vec1.first;
+    a = vec1.first + 1;
+    vec2 = Vecteur(a, 200);
+    b = vec1.second + vec2.first + 10;
+    vec3 = Vecteur(a, b);
+    return vec3.second;
 }
 
 """)

@@ -21,6 +21,9 @@ main :
     INIT_VARS
     BODY
     RETURN
+
+    mov rsp, rbp
+    
     mov rdi, fmt
     mov rsi, rax
     call printf
