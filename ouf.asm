@@ -4,7 +4,7 @@ fmt : db "%d", 10, 0
 argc : dq 0
 argv : dq 0
 x : dq 0
-y : dq 0
+$y : dq 0
 
 section .text
 global main
@@ -47,7 +47,7 @@ main :
         mov rax, 1
 
         push rax
-        mov rax, [y]
+        mov rax, [$y]
 
         pop rbx
         add rax, rbx
@@ -57,7 +57,7 @@ main :
         jmp debut1
         fin1 : nop
         
-    mov rax, [y]
+    mov rax, [$y]
 
     mov rdi, fmt
     mov rsi, rax
