@@ -127,12 +127,19 @@ def asm_exp(e):
                     mov rax, {e.children[1].children[len(e.children[1].children)-1-i]}
                     push rax 
                     """
+                elif (e.children[1].children[len(e.children[1].children)-1-i].type == "PIDENTIFIER"):
+                    temp=f"""
+                    mov rax, [rbp - {give_address_attribute(e.children[1].children[len(e.children[1].children)-1-i])}]
+                    push rax 
+                    """
+                
                 else:
                     temp=f"""
                     mov rax, [{e.children[1].children[len(e.children[1].children)-1-i]}]
                     push rax 
                     """
                 s=s+temp
+
             return f"""
                 {s}
                 call {e.children[0].value}
@@ -639,7 +646,8 @@ somme(a, b){
 main(A){
     vec1 = Vecteur(10,20);
     vec2 = Vecteur(vec1.first, 50);
-    return vec2.first;
+    final = somme(vec2.first, vec2.second);
+    return final;
 }
 
 """)
