@@ -3,6 +3,7 @@ section .data
 fmt : db "%d", 10, 0
 argc : dq 0
 argv : dq 0
+NULL : dq 0
 DECL_VARS
 
 

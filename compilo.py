@@ -691,16 +691,15 @@ somme(a, b){
     return a+b;
 }
 
-main(A){
-    p1 = Point(0,0);
+main(){
+    p1 = Point(0, 0);
     p2 = Point(3, 0);
-    p3 = Point(3, 7);
+    p3 = Point(2, 7);
     p4 = Point(0, 7);
 
-    r = Rectangle(p1, p2, p3, p4);
+    p3 = Point(3, 7);
 
-    compteur = 100;
-    total = 0;
+    r = Rectangle(p1, p2, p3, p4);
 
     if (r.p1.x){
         b = somme(r.p4.y, 50);
@@ -715,8 +714,39 @@ main(A){
 
 asm = asm_prg(ast)
 
-
 f = open("ouf.asm", "w")
 
 f.write(asm)
 f.close()
+
+ast = grammaire.parse("""
+class Arbre{
+    Arbre(left, value, right){
+        this.left = left;
+        this.value = value;
+        this.right = right;
+    }
+}
+
+class Point{
+    Point(x, y){
+        this.x = x;
+        this.y = y;
+    }
+}
+
+
+main(){
+
+    arbre1 = Arbre(Null, 10, Null);
+    b = arbre1.value;
+
+    arbre1 = Point(1, 2);
+    c = arbre1.x;
+
+    return b - c;
+}
+
+
+""")
+
