@@ -3,20 +3,33 @@ section .data
 fmt : db "%d", 10, 0
 argc : dq 0
 argv : dq 0
-g : dq 0
-i : dq 0
-b : dq 0
-d : dq 0
+7 : dq 0
 a : dq 0
+6 : dq 0
+h : dq 0
+2 : dq 0
+g : dq 0
+e : dq 0
+5 : dq 0
+8 : dq 0
+i : dq 0
 temp : dq 0
 f : dq 0
-h : dq 0
-c : dq 0
-e : dq 0
+3 : dq 0
 prout : dq 0
+12 : dq 0
+1 : dq 0
+c : dq 0
+d : dq 0
+9 : dq 0
+b : dq 0
+
+
 
 section .text
 global main
+
+
 
 
 somme:
@@ -59,66 +72,58 @@ somme:
     
     
     
+    
     mov rax, [i]
-
-    push rax
+    mov r8, rax
+    
+    
+    
     mov rax, [h]
-
-    pop rbx
-    add rax, rbx
-        
-    push rax
-    
-    
+    mov r8, rax
     
     
     
     mov rax, [g]
-
-    push rax
+    mov r8, rax
+    
     mov rax, [f]
-
-    pop rbx
-    add rax, rbx
+    add rax, r8
         
-    push rax
+    mov r8, rax
+    
     mov rax, [e]
-
-    pop rbx
-    add rax, rbx
+    add rax, r8
         
-    push rax
+    add rax, r8
+        
+    mov r8, rax
+    
     mov rax, [d]
-
-    pop rbx
-    add rax, rbx
+    add rax, r8
         
-    push rax
+    add rax, r8
+        
+    mov r8, rax
+    
+    
+    
     mov rax, [c]
-
-    pop rbx
-    add rax, rbx
-        
-    push rax
+    mov r8, rax
     
     mov rax, [b]
-
-    push rax
+    add rax, r8
+        
+    mov r8, rax
+    
     mov rax, [a]
-
-    pop rbx
-    add rax, rbx
+    add rax, r8
         
-    pop rbx
-    add rax, rbx
-        
-    pop rbx
-    add rax, rbx
+    add rax, r8
         
     mov [temp], rax 
-        
+            
+    
     mov rax, [temp]
-
     pop rsi
     pop rdi
     mov rsp, rbp
@@ -141,13 +146,12 @@ carre:
         
     
     
+    
     mov rax, [a]
-
-    push rax
+    mov r8, rax
+    
     mov rax, [a]
-
-    pop rbx
-    imul rax, rbx
+    imul rax, r8
         
     pop rsi
     pop rdi
@@ -158,6 +162,7 @@ carre:
 
 main :
     push rbp
+    mov rbp, rsp
     mov [argc], rdi
     mov [argv], rsi
     
@@ -168,60 +173,18 @@ main :
     mov [prout], rax
         
     
-    
-    
-    mov rax, 9
-    push rax 
-                    
-    mov rax, 8
-    push rax 
-                    
-    mov rax, 7
-    push rax 
-                    
-    mov rax, 6
-    push rax 
-                    
-    mov rax, 5
-    push rax 
-                    
-    mov rax, [prout]
-    push rax 
-                    
-    mov rax, 3
-    push rax 
-                    
-    mov rax, 2
-    push rax 
-                    
-    mov rax, 1
-    push rax 
-                    
-    call somme
-    add rsp, 8*9
-                
-    mov [c], rax 
-        
 
     
-    
-    mov rax, 12
-    push rax 
-                    
-    call carre
-    add rsp, 8*1
-                
-    mov [d], rax 
-        
     
     mov rax, [d]
-
-    push rax
+    mov r8, rax
+    
     mov rax, [c]
-
-    pop rbx
-    add rax, rbx
+    add rax, r8
         
+
+    mov rsp, rbp
+    
     mov rdi, fmt
     mov rsi, rax
     call printf
