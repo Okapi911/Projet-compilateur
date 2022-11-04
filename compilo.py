@@ -519,7 +519,11 @@ def pp_bcls(bcls, ntab = 0):
 def pp_prg(p):
     g = "{"
     d = "}"
-    return f"{pp_bcls(p.children[0])} \n\n{pp_bfunc(p.children[1])} \n\nmain ({pp_varlist(p.children[2])}) {g} \n{pp_bcom(p.children[3], 1)} \n    return {pp_exp(p.children[4])}; \n{d}"
+    if(pp_bcom(p.children[3])!=""):
+        return f"{pp_bcls(p.children[0])} \n\n{pp_bfunc(p.children[1])} \n\nmain ({pp_varlist(p.children[2])}) {g} \n{pp_bcom(p.children[3], 1)} \n    return {pp_exp(p.children[4])}; \n{d}"
+    else:
+        return f"{pp_bcls(p.children[0])} \n\n{pp_bfunc(p.children[1])} \n\nmain ({pp_varlist(p.children[2])}) {g} \n    return {pp_exp(p.children[4])}; \n{d}"
+    
 
 def find_cls(attribut):
     nom = f"""this.{attribut}"""
@@ -570,38 +574,18 @@ def pp_func(f, ntab = 0):
         else:
             return f"{f.children[0]} ({pp_varlist(f.children[1])}) {g} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
 
-ast = grammaire.parse("""
-    class Vecteur{
-        Vecteur(f,s){
-            this.first = f;
-            this.second = s;
-        }
-    }
-    
-    class Point{
-        Point(f,s){
-            this.x = x;
-            this.y = y;
-        }
-    } 
-                      
+ast = grammaire.parse("""              
     somme(a, b){
         return a+b;
     }
     
-    main(A){
-        vec1 = Point(1,2);
-        vec1 = Vecteur(10,20);
-        return vec1.second;
+    main(a,b){
+        return somme(a,b);
     }
-"""
-)
+""")
+print(pp_prg(ast))
 
-print(ast)
-
-pp = pp_prg(ast)
-print('\n'+pp)
-
+print("\n")
 asm = asm_prg(ast)
 
 f = open("ouf.asm", "w")
