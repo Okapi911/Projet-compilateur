@@ -253,6 +253,24 @@ def asm_com(c):
     fin{n} : nop
         """
     
+    elif c.data == "if_else":
+        E1 = asm_exp(c.children[0])
+        C1 = asm_bcom(c.children[1])
+        C2 = asm_bcom(c.children[2])
+        n1 = next()
+        n2 = next()
+        return f"""
+    {E1}
+    cmp rax, 0
+    jz else{n1}
+    {C1}
+    jmp fin{n2}
+    else{n1} :
+    {C2}
+    fin{n2} : nop
+
+        """
+
     elif c.data == "while":
         E1 = asm_exp(c.children[0])
         C1 = asm_bcom(c.children[1])
@@ -482,6 +500,12 @@ def vars_com(c):
         E = vars_exp(c.children[0])
         return E | B
 
+    elif c.data == "if_else":
+        B = vars_bcom(c.children[1])
+        B2 = vars_bcom(c.children[2])
+        E = vars_exp(c.children[0])
+        return E | B | B2
+
     elif c.data == "while":
         B = vars_bcom(c.children[1])
         E = vars_exp(c.children[0])
@@ -663,6 +687,10 @@ aire(rectangle){
     return d1*d2;
 }
 
+somme(a, b){
+    return a+b;
+}
+
 main(A){
     p1 = Point(0,0);
     p2 = Point(3, 0);
@@ -671,7 +699,16 @@ main(A){
 
     r = Rectangle(p1, p2, p3, p4);
 
-    return perimetre(r) + aire(r);
+    compteur = 100;
+    total = 0;
+
+    if (r.p1.x){
+        b = somme(r.p4.y, 50);
+    }else {
+        b = aire(r);
+    }
+
+    return b;
 }
 
 """)
