@@ -8,9 +8,9 @@
 
 ```c++
 if (condition){
-    bloc de commandes : si condition = 0;
+    bloc de commandes : si condition != 0;
 }else{
-    bloc de commandes sinon;
+    bloc de commandes : si condition = 0;
 }
 ```
 
