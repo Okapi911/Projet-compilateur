@@ -519,7 +519,7 @@ def pp_bcls(bcls, ntab = 0):
 def pp_prg(p):
     g = "{"
     d = "}"
-    return f"{pp_bcls(p.children[0])} {pp_bfunc(p.children[1])} \n\nmain ({pp_varlist(p.children[2])}) {g} \n{pp_bcom(p.children[3], 1)} \n    return {pp_exp(p.children[4])}; \n{d}"
+    return f"{pp_bcls(p.children[0])} \n\n{pp_bfunc(p.children[1])} \n\nmain ({pp_varlist(p.children[2])}) {g} \n{pp_bcom(p.children[3], 1)} \n    return {pp_exp(p.children[4])}; \n{d}"
 
 def find_cls(attribut):
     nom = f"""this.{attribut}"""
@@ -561,23 +561,27 @@ def pp_func(f, ntab = 0):
     nbre_child=len(f.children)
     if nbre_child==3:
         if(pp_bcom(f.children[2])!=""):
-            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{d}"
+            return f"{f.children[0]} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{d}"
         else:
-            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{tabulation}{d}"
+            return f"{f.children[0]} ({pp_varlist(f.children[1])}) {g} \n{tabulation}{d}"
     else:
         if(pp_bcom(f.children[2])!=""):
-            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
+            return f"{f.children[0]} ({pp_varlist(f.children[1])}) {g} \n{pp_bcom(f.children[2], ntab+1)} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
         else:
-            return f"{pp_name(f.children[0])} ({pp_varlist(f.children[1])}) {g} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
-
-def pp_name(n):
-    return f"{n.children[0]}"
+            return f"{f.children[0]} ({pp_varlist(f.children[1])}) {g} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
 
 ast = grammaire.parse("""
     class Vecteur{
         Vecteur(f,s){
             this.first = f;
             this.second = s;
+        }
+    }
+    
+    class Point{
+        Point(f,s){
+            this.x = x;
+            this.y = y;
         }
     } 
                       
@@ -586,18 +590,17 @@ ast = grammaire.parse("""
     }
     
     main(A){
+        vec1 = Point(1,2);
         vec1 = Vecteur(10,20);
-        vec2 = Vecteur(vec1.first, 50);
-        final = somme(vec2.first, vec2.second);
-        return final;
+        return vec1.second;
     }
 """
 )
 
-"""print(ast)
+print(ast)
 
 pp = pp_prg(ast)
-print('\n'+pp)"""
+print('\n'+pp)
 
 asm = asm_prg(ast)
 

@@ -3,17 +3,14 @@ section .data
 fmt : db "%d", 10, 0
 argc : dq 0
 argv : dq 0
-vec2 : dq 0
-a : dq 0
-f : dq 0
-A : dq 0
-vec1.first : dq 0
-vec2.second : dq 0
-b : dq 0
-s : dq 0
-final : dq 0
-vec2.first : dq 0
 vec1 : dq 0
+a : dq 0
+y : dq 0
+x : dq 0
+b : dq 0
+f : dq 0
+s : dq 0
+A : dq 0
 
 
 
@@ -47,6 +44,43 @@ Vecteur :
 
             
     mov rax, [s]
+
+    mov rdx, rax
+    mov rax, [rbp-8]
+    mov [rax + 0], rdx 
+            
+    
+    mov rsp, rbp
+    pop rbp
+    ret
+    
+
+Point :
+    push rbp
+    mov rbp, rsp
+
+    
+    mov rax, [rbp+16]
+    mov [f], rax
+        
+    mov rax, [rbp+24]
+    mov [s], rax
+        
+    mov [rbp-8], rdi
+    sub rsp, 16
+        
+
+    
+            
+    mov rax, [x]
+
+    mov rdx, rax
+    mov rax, [rbp-8]
+    mov [rax + 8], rdx 
+            
+
+            
+    mov rax, [y]
 
     mov rdx, rax
     mov rax, [rbp-8]
@@ -112,6 +146,22 @@ main :
     lea rax, [rbp - 16]
     mov rdi, rax
                 
+    mov rax, 2
+    push rax
+                
+    mov rax, 1
+    push rax
+                
+    call Point
+                
+
+    lea r9, [rbp - 32]
+    mov [vec1], r9
+    
+    sub rsp, 16
+    lea rax, [rbp - 32]
+    mov rdi, rax
+                
     mov rax, 20
     push rax
                 
@@ -120,38 +170,8 @@ main :
                 
     call Vecteur
                 
-
-    lea r9, [rbp - 32]
-    mov [vec2], r9
     
-    sub rsp, 16
-    lea rax, [rbp - 32]
-    mov rdi, rax
-                
-    mov rax, 50
-    push rax
-                
-    mov rax, [rbp - 8]
-    push rax
-                    
-    call Vecteur
-                
-
-    
-    
-    mov rax, [rbp - 32]
-    push rax 
-                    
-    mov rax, [rbp - 24]
-    push rax 
-                    
-    call somme
-    add rsp, 8*2
-                
-    mov [final], rax 
-                
-    
-    mov rax, [final]
+    mov rax, [rbp - 16]
 
     mov rsp, rbp
     
