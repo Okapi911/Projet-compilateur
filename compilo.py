@@ -634,33 +634,44 @@ def pp_func(f, ntab = 0):
 
 
 ast = grammaire.parse("""
-class Vecteur{
-    Vecteur(f, s){
-        this.first = f;
-        this.second = s;
+
+class Point{
+    Point(x, y){
+        this.x = x;
+        this.y = y;
     }
 }
 
-somme(a, b){
-    return a + b;
+class Rectangle{
+    Rectangle(point1, point2, point3, point4){
+        this.p1 = point1;
+        this.p2 = point2;
+        this.p3 = point3;
+        this.p4 = point4;
+    }
+}
+
+perimetre(rectangle){
+    d1 = rectangle.p2.x - rectangle.p1.x;
+    d2 = rectangle.p4.y - rectangle.p1.y;
+    return (2*d1) + (2*d2);
+}
+
+aire(rectangle){
+    d1 = rectangle.p2.x - rectangle.p1.x;
+    d2 = rectangle.p4.y - rectangle.p1.y;
+    return d1*d2;
 }
 
 main(A){
+    p1 = Point(0,0);
+    p2 = Point(3, 0);
+    p3 = Point(3, 7);
+    p4 = Point(0, 7);
 
+    r = Rectangle(p1, p2, p3, p4);
 
-    vec1 = Vecteur(1000, 2000);
-    vec2 = Vecteur(vec1.second, 200);
-    a = vec2.first;
-
-    vec3 = Vecteur(vec1, vec2);
-
-    b= somme(vec3.first.first, vec3.second.first);
-
-    a = Vecteur(1,2);
-    a = Vecteur(3,4);
-
-
-    return a.first;
+    return perimetre(r) + aire(r);
 }
 
 """)
