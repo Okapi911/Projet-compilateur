@@ -56,39 +56,54 @@ d = "}"
 
 op = {'+' : 'add', '-' : 'sub', '*' : 'imul', '/' : 'idiv'}
 
+def asm_pvar(e):
+
+    if type(e) == lark.lexer.Token:
+        nom = e
+    else:
+        nom = e.children[0].value
+
+    att_pvar = nom.split(".")
+    size_pvar = len(att_pvar)
+    
+    if "this" in nom:
+        attribut = nom.split(".")[1]
+        nomClass = find_cls(attribut)
+        decalage = len(attributs[nomClass]) - attributs[nomClass].index(nom) - 1
+        return f"""    mov rax, [rax + {8 * decalage}]"""
+    
+    else:
+
+        debut = f"""{att_pvar[0]}"""
+
+        s = f"""
+            mov rax, [{debut}]
+        """
+
+        for i in range(1, size_pvar):
+            
+            classe = find_cls(att_pvar[i])
+            decalage = len(attributs[classe]) - attributs[classe].index(f"""this.{att_pvar[i]}""") - 1
+            e = f"""
+            lea r8, [rax]
+            mov rax, [r8+ {8 * decalage}]  
+            """
+            s = s+e
+        return s
+
+
 def asm_exp(e):
+
     if e.data == "exp_nombre":
         return f"""
     mov rax, {e.children[0].value}"""
+
     elif e.data == "exp_var":
         return f"""
     mov rax, [{e.children[0].value}]"""
+
     elif e.data == "exp_pvar":
-        nom = e.children[0].value
-        att_pvar = e.children[0].value.split(".")
-        size_pvar = len(att_pvar)
-        if "this" in nom:
-            attribut = nom.split(".")[1]
-            nomClass = find_cls(attribut)
-            decalage = len(attributs[nomClass]) - attributs[nomClass].index(nom) - 1
-            return f"""
-    mov rax, [rax + {8 * decalage}]"""
-        else:
-            debut = f"""{att_pvar[0]}.{att_pvar[1]}"""
-            s = f"""
-                mov rax, [rbp - {give_address_attribute(debut)}]
-                """
-            for i in range(2, size_pvar):
-                classe = find_cls(att_pvar[i])
-                decalage = len(attributs[classe]) - attributs[classe].index(f"""this.{att_pvar[i]}""") - 1
-                print(decalage)
-                e = f"""
-                lea r8, [rax]
-                mov rax, [r8+ {8 * decalage}]  
-                """
-                s = s+e
-            return s
-            #f"""mov rax, [rbp - {give_address_attribute(e.children[0].value)}]"""
+        return asm_pvar(e)
 
     elif e.data == "exp_par":
         return asm_exp(e.children[0])
@@ -123,9 +138,11 @@ def asm_exp(e):
                     mov rax, {v}
                     push rax
                     """
+
                 elif v.type == "PIDENTIFIER":
+                    PVAR = asm_pvar(v)
                     E = f"""
-                    mov rax, [rbp - {give_address_attribute(v.value)}]
+                    {PVAR}
                     push rax
                     """
                 else:
@@ -147,8 +164,9 @@ def asm_exp(e):
 
                     """
                 elif (e.children[1].children[len(e.children[1].children)-1-i].type == "PIDENTIFIER"):
+                    PVAR = asm_pvar(e.children[1].children[len(e.children[1].children)-1-i])
                     temp=f"""
-                    mov rax, [rbp - {give_address_attribute(e.children[1].children[len(e.children[1].children)-1-i])}]
+                    {PVAR}
                     push rax 
                     """
                 
@@ -177,14 +195,7 @@ def next():
 def asm_com(c):
 
     if c.data == "assignation":
-        if c.children[1].data == "exp_nombre" or c.children[1].data == "exp_var" or c.children[1].data == "exp_opbin":
-            E1 = asm_exp(c.children[1])
-            return f"""
-
-    {E1}
-    mov [{c.children[0].value}], rax 
-            """
-        elif c.children[1].data == "exp_call":
+        if c.children[1].data == "exp_call":
             if(c.children[1].children[0] in listClass):
                 place = find_place(c.children[1].children[0])
                 objectsCreated.append((c.children[0].value, place))
@@ -201,7 +212,12 @@ def asm_com(c):
     mov [{c.children[0].value}], rax 
                 """
         else:
-            return ""
+            E1 = asm_exp(c.children[1])
+            return f"""
+
+    {E1}
+    mov [{c.children[0].value}], rax 
+            """
         
     elif c.data == "p_assignation":
         E1 = asm_exp(c.children[1])
@@ -249,6 +265,7 @@ def asm_com(c):
     jmp debut{n}
     fin{n} : nop
         """
+
     elif c.data == "print":
         E1 = asm_exp(c.children[0])
         return f"""
@@ -629,16 +646,21 @@ somme(a, b){
 }
 
 main(A){
+
+
     vec1 = Vecteur(1000, 2000);
-    vec2 = Vecteur(vec1, 200);
-    vec3 = Vecteur(100, vec2);
+    vec2 = Vecteur(vec1.second, 200);
+    a = vec2.first;
 
-    vec3.second = vec1;
+    vec3 = Vecteur(vec1, vec2);
 
-    a = Vecteur(1, 2);
-    a = Vecteur(3, 4);
+    b= somme(vec3.first.first, vec3.second.first);
 
-    return vec3.second.first;
+    a = Vecteur(1,2);
+    a = Vecteur(3,4);
+
+
+    return a.first;
 }
 
 """)
