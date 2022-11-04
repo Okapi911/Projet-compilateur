@@ -65,15 +65,30 @@ def asm_exp(e):
     mov rax, [{e.children[0].value}]"""
     elif e.data == "exp_pvar":
         nom = e.children[0].value
+        att_pvar = e.children[0].value.split(".")
+        size_pvar = len(att_pvar)
         if "this" in nom:
             attribut = nom.split(".")[1]
             nomClass = find_cls(attribut)
             decalage = len(attributs[nomClass]) - attributs[nomClass].index(nom) - 1
             return f"""
     mov rax, [rax + {8 * decalage}]"""
-        
-        return f"""
-    mov rax, [rbp - {give_address_attribute(e.children[0].value)}]"""
+        else:
+            debut = f"""{att_pvar[0]}.{att_pvar[1]}"""
+            s = f"""
+                mov rax, [rbp - {give_address_attribute(debut)}]
+                """
+            for i in range(2, size_pvar):
+                classe = find_cls(att_pvar[i])
+                decalage = len(attributs[classe]) - attributs[classe].index(f"""this.{att_pvar[i]}""") - 1
+                print(decalage)
+                e = f"""
+                lea r8, [rax]
+                mov rax, [r8+ {8 * decalage}]  
+                """
+                s = s+e
+            return s
+            #f"""mov rax, [rbp - {give_address_attribute(e.children[0].value)}]"""
 
     elif e.data == "exp_par":
         return asm_exp(e.children[0])
@@ -501,10 +516,8 @@ def pp_exp(e, ntab = 0):
         return f"{e.children[0].value}({pp_varlist(e.children[1])})"
     elif e.data == "exp_opbin":
         return f"{tabulation}{pp_exp(e.children[0])} {e.children[1].value} {pp_exp(e.children[2])}"
-    elif e.data == "exp_appel_class":
-        return f"{e.children[0].value}({pp_varlist(e.children[1])})"
     elif e.data == "exp_call":
-        return f"{tabulation}{pp_name(e.children[0])}({pp_argsList(e.children[1])})"
+        return f"{e.children[0].value}({pp_varlist(e.children[1])})"
 
 
 def pp_com(c, ntab = 0):
@@ -616,16 +629,20 @@ somme(a, b){
 }
 
 main(A){
-    vec1 = Vecteur(10,20);
-    vec2 = Vecteur(vec1.first, 50);
-    final = somme(vec2.first, vec2.second);
-    return final;
+    vec1 = Vecteur(1000, 2000);
+    vec2 = Vecteur(vec1, 200);
+    vec3 = Vecteur(100, vec2);
+
+    vec3.second = vec1;
+
+    a = Vecteur(1, 2);
+    a = Vecteur(3, 4);
+
+    return vec3.second.first;
 }
 
 """)
 
-
-print("\n")
 asm = asm_prg(ast)
 
 
