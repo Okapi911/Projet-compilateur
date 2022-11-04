@@ -2,7 +2,7 @@
 
 
 ## Ce que vous pouvez faire 
-#
+
 - Utiliser les opérations élémentaires (addition, soustraction, multiplication).
 - Utiliser If et If / else.
 
@@ -124,7 +124,7 @@ main(){
 ```
 
 ## Ce que vous devez faire
-#
+
 
 - Déclarer une fonction main
 ```c++
@@ -158,7 +158,7 @@ main(){
 ```
 
 ## Ce que vous ne devez/pouvez pas faire
-#
+
 - Ne pas créer des classes différentes avec des attributs en communs.
 - Ne pas instancier d'objets en dehors de la fonction main.
 - Ne pas utiliser d'expressions comme arguments d'un(e) fonction / constructeur de classe.
@@ -180,7 +180,7 @@ Pour faire fonctionner le compilateur, exécutez le programme python compilo.py 
 <br/>
 
 ## Un exemple utilisant un maximum de fonctionnalités
-#
+
 
 Vous trouverez ci-dessous un exemple fonctionnel qui utilise les principes énoncés précedemment :
 
