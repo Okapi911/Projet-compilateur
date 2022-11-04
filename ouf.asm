@@ -3,20 +3,17 @@ section .data
 fmt : db "%d", 10, 0
 argc : dq 0
 argv : dq 0
-i : dq 0
-e : dq 0
-x : dq 0
-c : dq 0
-h : dq 0
-f : dq 0
-y : dq 0
-g : dq 0
-prout : dq 0
-d : dq 0
-b : dq 0
+vec2 : dq 0
 a : dq 0
-temp : dq 0
-vect : dq 0
+f : dq 0
+A : dq 0
+vec1.first : dq 0
+vec2.second : dq 0
+b : dq 0
+s : dq 0
+final : dq 0
+vec2.first : dq 0
+vec1 : dq 0
 
 
 
@@ -30,10 +27,10 @@ Vecteur :
 
     
     mov rax, [rbp+16]
-    mov [x], rax
+    mov [f], rax
         
     mov rax, [rbp+24]
-    mov [y], rax
+    mov [s], rax
         
     mov [rbp-8], rdi
     sub rsp, 16
@@ -41,7 +38,7 @@ Vecteur :
 
     
             
-    mov rax, [x]
+    mov rax, [f]
 
     mov rdx, rax
     mov rax, [rbp-8]
@@ -49,7 +46,7 @@ Vecteur :
             
 
             
-    mov rax, [y]
+    mov rax, [s]
 
     mov rdx, rax
     mov rax, [rbp-8]
@@ -66,7 +63,7 @@ somme:
     push rbp
     mov rbp, rsp
     
-    sub rsp, 8*9
+    sub rsp, 8*2
     
     push rdi
     push rsi
@@ -78,65 +75,7 @@ somme:
     mov rax, [rbp+24]
     mov [b], rax
         
-    mov rax, [rbp+32]
-    mov [c], rax
-        
-    mov rax, [rbp+40]
-    mov [d], rax
-        
-    mov rax, [rbp+48]
-    mov [e], rax
-        
-    mov rax, [rbp+56]
-    mov [f], rax
-        
-    mov rax, [rbp+64]
-    mov [g], rax
-        
-    mov rax, [rbp+72]
-    mov [h], rax
-        
-    mov rax, [rbp+80]
-    mov [i], rax
-        
     
-    
-    
-    mov rax, [i]
-    push rax
-    
-    
-    
-    mov rax, [h]
-    push rax
-    
-    mov rax, [g]
-    pop rbx
-    add rax, rbx
-        
-    push rax
-    
-    
-    mov rax, [f]
-    push rax
-    
-    
-    
-    
-    mov rax, [e]
-    push rax
-    
-    mov rax, [d]
-    pop rbx
-    add rax, rbx
-        
-    push rax
-    
-    mov rax, [c]
-    pop rbx
-    add rax, rbx
-        
-    push rax
     
     
     mov rax, [b]
@@ -145,52 +84,6 @@ somme:
     mov rax, [a]
     pop rbx
     add rax, rbx
-        
-    pop rbx
-    add rax, rbx
-        
-    pop rbx
-    add rax, rbx
-        
-    pop rbx
-    add rax, rbx
-        
-    pop rbx
-    add rax, rbx
-        
-    mov [temp], rax 
-            
-    
-    mov rax, [temp]
-    pop rsi
-    pop rdi
-    mov rsp, rbp
-    pop rbp
-    ret
-    
-
-carre:
-    push rbp
-    mov rbp, rsp
-    
-    sub rsp, 8*1
-    
-    push rdi
-    push rsi
-    
-    
-    mov rax, [rbp+16]
-    mov [a], rax
-        
-    
-    
-    
-    mov rax, [a]
-    push rax
-    
-    mov rax, [a]
-    pop rbx
-    imul rax, rbx
         
     pop rsi
     pop rdi
@@ -209,93 +102,56 @@ main :
     mov rdi, [rbx + 8]
     xor rax, rax
     call atoi
-    mov [prout], rax
+    mov [A], rax
         
     
-    
-    
-    mov rax, 9
-    push rax 
-                    
-    mov rax, 8
-    push rax 
-                    
-    mov rax, 7
-    push rax 
-                    
-    mov rax, 6
-    push rax 
-                    
-    mov rax, 5
-    push rax 
-                    
-    mov rax, [prout]
-    push rax 
-                    
-    mov rax, 3
-    push rax 
-                    
-    mov rax, 2
-    push rax 
-                    
-    mov rax, 1
-    push rax 
-                    
-    call somme
-    add rsp, 8*9
-                
-    mov [c], rax 
-                
-
-    
-    
-    mov rax, 12
-    push rax 
-                    
-    call carre
-    add rsp, 8*1
-                
-    mov [d], rax 
-                
-
     lea r9, [rbp - 16]
-    mov [vect], r9
+    mov [vec1], r9
     
     sub rsp, 16
     lea rax, [rbp - 16]
     mov rdi, rax
                 
-    mov rax, 2
+    mov rax, 20
     push rax
                 
-    mov rax, 1
+    mov rax, 10
     push rax
                 
     call Vecteur
                 
+
+    lea r9, [rbp - 32]
+    mov [vec2], r9
     
-    
-    mov rax, [rbp - 16]
+    sub rsp, 16
+    lea rax, [rbp - 32]
+    mov rdi, rax
+                
+    mov rax, 50
     push rax
-    
-    
+                
     mov rax, [rbp - 8]
     push rax
+                    
+    call Vecteur
+                
+
     
     
-    mov rax, [d]
-    push rax
+    mov rax, [rbp - 32]
+    push rax 
+                    
+    mov rax, [rbp - 24]
+    push rax 
+                    
+    call somme
+    add rsp, 8*2
+                
+    mov [final], rax 
+                
     
-    mov rax, [c]
-    pop rbx
-    add rax, rbx
-        
-    pop rbx
-    add rax, rbx
-        
-    pop rbx
-    add rax, rbx
-        
+    mov rax, [final]
 
     mov rsp, rbp
     

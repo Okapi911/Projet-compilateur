@@ -98,6 +98,11 @@ def asm_exp(e):
     mov rax, {v}
     push rax
                 """
+                elif v.type == "PIDENTIFIER":
+                    E = f"""
+    mov rax, [rbp - {give_address_attribute(v.value)}]
+    push rax
+                    """
                 else:
                     E = f"""
     mov rax, [{v}]
@@ -110,6 +115,11 @@ def asm_exp(e):
                 if(e.children[1].children[len(e.children[1].children)-1-i].type == "IDENTIFIER"):
                     temp=f"""
     mov rax, [{e.children[1].children[len(e.children[1].children)-1-i].value}]
+    push rax 
+                    """
+                elif(e.children[1].children[len(e.children[1].children)-1-i].type == "PIDENTIFIER"):
+                    temp=f"""
+    mov rax, [rbp - {give_address_attribute(e.children[1].children[len(e.children[1].children)-1-i])}]
     push rax 
                     """
                 else:
@@ -565,26 +575,21 @@ def pp_name(n):
 
 ast = grammaire.parse("""
     class Vecteur{
-        Vecteur(x,y){
-            this.x = x;
-            this.y = y;
+        Vecteur(f,s){
+            this.first = f;
+            this.second = s;
         }
     } 
                       
-    somme(a, b, c, d, e, f, g, h, i){
-        temp = a+b+c+d+e+f+g+h+i;
-        return temp;
+    somme(a, b){
+        return a+b;
     }
     
-    carre(a){
-        return a*a;
-    }
-    
-    main(prout){
-        c=somme(1,2,3,prout,5,6,7,8,9);
-        d=carre(12);
-        vect = Vecteur(1,2);
-        return c+d+vect.x+vect.y;
+    main(A){
+        vec1 = Vecteur(10,20);
+        vec2 = Vecteur(vec1.first, 50);
+        final = somme(vec2.first, vec2.second);
+        return final;
     }
 """
 )
