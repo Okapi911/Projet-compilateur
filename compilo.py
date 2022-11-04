@@ -400,6 +400,7 @@ def vars_exp(e):
     
 def vars_cls(cls):
     listClass.append(cls.children[0].value)
+
     VL = set([t.value for t in cls.children[2].children])
     BC = vars_bcom(cls.children[3])
 
@@ -424,15 +425,18 @@ def vars_func(f):
     return L|M|R
 
 def vars_com(c):
-
     if c.data == "assignation":
         if c.children[1].data == "exp_call":
             nom = c.children[1].children[0].value
+            L = vars_exp(c.children[1])
+            return {c.children[0].value} | L
+
+            """
             if nom in listClass:
                 return {c.children[0]}
             elif nom in listFunctions:
                 L = set([t.value for t in c.children[1].children[1].children])
-                return {c.children[0]} | L
+                return {c.children[0].value} | L"""
         else:
             R = vars_exp(c.children[1])
             return {c.children[0].value} | R
@@ -618,7 +622,8 @@ def pp_name(n):
 ast = grammaire.parse("""
 class Vecteur{
     Vecteur(f, s){
-        this.first = f;
+        g = somme(f,s);
+        this.first = g;
         this.second = s;
     }
 }
@@ -629,9 +634,7 @@ somme(a, b){
 
 main(A){
     vec1 = Vecteur(10,20);
-    sum = somme(A, A);
-    vec2 = Vecteur(10, sum);
-    vec2.first = somme(100, 10);
+    vec2 = Vecteur(vec1.first, 50);
     return vec2.first;
 }
 
