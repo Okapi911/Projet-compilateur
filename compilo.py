@@ -369,7 +369,7 @@ def asm_func(f):
         """
             s = s + e
         return f"""
-{f.children[0].children[0].value}:
+{f.children[0].value}:
     push rbp
     mov rbp, rsp
     sub rsp, 8*{len(f.children[1].children)}
@@ -709,8 +709,6 @@ main(){
 
     return b;
 }
-
-""")
 
 asm = asm_prg(ast)
 
