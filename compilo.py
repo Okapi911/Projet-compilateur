@@ -56,24 +56,54 @@ d = "}"
 
 op = {'+' : 'add', '-' : 'sub', '*' : 'imul', '/' : 'idiv'}
 
+def asm_pvar(e):
+
+    if type(e) == lark.lexer.Token:
+        nom = e
+    else:
+        nom = e.children[0].value
+
+    att_pvar = nom.split(".")
+    size_pvar = len(att_pvar)
+    
+    if "this" in nom:
+        attribut = nom.split(".")[1]
+        nomClass = find_cls(attribut)
+        decalage = len(attributs[nomClass]) - attributs[nomClass].index(nom) - 1
+        return f"""    mov rax, [rax + {8 * decalage}]"""
+    
+    else:
+
+        debut = f"""{att_pvar[0]}"""
+
+        s = f"""
+            mov rax, [{debut}]
+        """
+
+        for i in range(1, size_pvar):
+            
+            classe = find_cls(att_pvar[i])
+            decalage = len(attributs[classe]) - attributs[classe].index(f"""this.{att_pvar[i]}""") - 1
+            e = f"""
+            lea r8, [rax]
+            mov rax, [r8+ {8 * decalage}]  
+            """
+            s = s+e
+        return s
+
+
 def asm_exp(e):
+
     if e.data == "exp_nombre":
         return f"""
     mov rax, {e.children[0].value}"""
+
     elif e.data == "exp_var":
         return f"""
     mov rax, [{e.children[0].value}]"""
+
     elif e.data == "exp_pvar":
-        nom = e.children[0].value
-        if "this" in nom:
-            attribut = nom.split(".")[1]
-            nomClass = find_cls(attribut)
-            decalage = len(attributs[nomClass]) - attributs[nomClass].index(nom) - 1
-            return f"""
-    mov rax, [rax + {8 * decalage}]"""
-        
-        return f"""
-    mov rax, [rbp - {give_address_attribute(e.children[0].value)}]"""
+        return asm_pvar(e)
 
     elif e.data == "exp_par":
         return asm_exp(e.children[0])
@@ -108,9 +138,11 @@ def asm_exp(e):
                     mov rax, {v}
                     push rax
                     """
+
                 elif v.type == "PIDENTIFIER":
+                    PVAR = asm_pvar(v)
                     E = f"""
-                    mov rax, [rbp - {give_address_attribute(v.value)}]
+                    {PVAR}
                     push rax
                     """
                 else:
@@ -132,8 +164,9 @@ def asm_exp(e):
 
                     """
                 elif (e.children[1].children[len(e.children[1].children)-1-i].type == "PIDENTIFIER"):
+                    PVAR = asm_pvar(e.children[1].children[len(e.children[1].children)-1-i])
                     temp=f"""
-                    mov rax, [rbp - {give_address_attribute(e.children[1].children[len(e.children[1].children)-1-i])}]
+                    {PVAR}
                     push rax 
                     """
                 
@@ -162,14 +195,7 @@ def next():
 def asm_com(c):
 
     if c.data == "assignation":
-        if c.children[1].data == "exp_nombre" or c.children[1].data == "exp_var" or c.children[1].data == "exp_opbin":
-            E1 = asm_exp(c.children[1])
-            return f"""
-
-    {E1}
-    mov [{c.children[0].value}], rax 
-            """
-        elif c.children[1].data == "exp_call":
+        if c.children[1].data == "exp_call":
             if(c.children[1].children[0] in listClass):
                 place = find_place(c.children[1].children[0])
                 objectsCreated.append((c.children[0].value, place))
@@ -186,7 +212,12 @@ def asm_com(c):
     mov [{c.children[0].value}], rax 
                 """
         else:
-            return ""
+            E1 = asm_exp(c.children[1])
+            return f"""
+
+    {E1}
+    mov [{c.children[0].value}], rax 
+            """
         
     elif c.data == "p_assignation":
         E1 = asm_exp(c.children[1])
@@ -234,6 +265,7 @@ def asm_com(c):
     jmp debut{n}
     fin{n} : nop
         """
+
     elif c.data == "print":
         E1 = asm_exp(c.children[0])
         return f"""
@@ -501,10 +533,8 @@ def pp_exp(e, ntab = 0):
         return f"{e.children[0].value}({pp_varlist(e.children[1])})"
     elif e.data == "exp_opbin":
         return f"{tabulation}{pp_exp(e.children[0])} {e.children[1].value} {pp_exp(e.children[2])}"
-    elif e.data == "exp_appel_class":
-        return f"{e.children[0].value}({pp_varlist(e.children[1])})"
     elif e.data == "exp_call":
-        return f"{tabulation}{pp_name(e.children[0])}({pp_argsList(e.children[1])})"
+        return f"{e.children[0].value}({pp_varlist(e.children[1])})"
 
 
 def pp_com(c, ntab = 0):
@@ -604,28 +634,48 @@ def pp_func(f, ntab = 0):
 
 
 ast = grammaire.parse("""
-class Vecteur{
-    Vecteur(f, s){
-        this.first = f;
-        this.second = s;
+
+class Point{
+    Point(x, y){
+        this.x = x;
+        this.y = y;
     }
 }
 
-somme(a, b){
-    return a + b;
+class Rectangle{
+    Rectangle(point1, point2, point3, point4){
+        this.p1 = point1;
+        this.p2 = point2;
+        this.p3 = point3;
+        this.p4 = point4;
+    }
+}
+
+perimetre(rectangle){
+    d1 = rectangle.p2.x - rectangle.p1.x;
+    d2 = rectangle.p4.y - rectangle.p1.y;
+    return (2*d1) + (2*d2);
+}
+
+aire(rectangle){
+    d1 = rectangle.p2.x - rectangle.p1.x;
+    d2 = rectangle.p4.y - rectangle.p1.y;
+    return d1*d2;
 }
 
 main(A){
-    vec1 = Vecteur(10,20);
-    vec2 = Vecteur(vec1.first, 50);
-    final = somme(vec2.first, vec2.second);
-    return final;
+    p1 = Point(0,0);
+    p2 = Point(3, 0);
+    p3 = Point(3, 7);
+    p4 = Point(0, 7);
+
+    r = Rectangle(p1, p2, p3, p4);
+
+    return perimetre(r) + aire(r);
 }
 
 """)
 
-
-print("\n")
 asm = asm_prg(ast)
 
 
