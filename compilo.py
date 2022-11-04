@@ -392,6 +392,10 @@ def vars_exp(e):
         L = vars_exp(e.children[0])
         R = vars_exp(e.children[2])
         return L | R
+    elif e.data == "exp_call":
+        L = set([t.value for t in e.children[1].children if not "." in t and t.type != "SIGNED_NUMBER"])
+        return L
+
         
     
 def vars_cls(cls):
@@ -627,7 +631,8 @@ main(A){
     vec1 = Vecteur(10,20);
     sum = somme(A, A);
     vec2 = Vecteur(10, sum);
-    return vec2.second;
+    vec2.first = somme(100, 10);
+    return vec2.first;
 }
 
 """)
