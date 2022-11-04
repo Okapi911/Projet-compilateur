@@ -20,6 +20,7 @@ com : IDENTIFIER "=" exp ";"                                    -> assignation
 | "if" "(" exp ")" "{" bcom "}" "else" "{" bcom "}"             -> if_else
 | "while" "(" exp ")" "{" bcom "}"                              -> while
 | "print" "(" exp ")" ";"                                       -> print
+| IDENTIFIER "(" var_list ")" ";"                               -> com_call
 
 bcom : (com)*
 
@@ -242,6 +243,40 @@ def asm_com(c):
     mov rsi, rax
     call printf
         """
+    
+    elif c.data == "com_call":
+        nom = c.children[0]
+        if nom in listFunctions :
+            s=""
+            for i in range(len(c.children[1].children)):
+                if(c.children[1].children[len(c.children[1].children)-1-i].type == "SIGNED_NUMBER"):
+                    temp=f"""
+                    mov rax, {c.children[1].children[len(c.children[1].children)-1-i]}
+                    push rax 
+
+                    """
+                elif (c.children[1].children[len(c.children[1].children)-1-i].type == "PIDENTIFIER"):
+                    temp=f"""
+                    mov rax, [rbp - {give_address_attribute(c.children[1].children[len(c.children[1].children)-1-i])}]
+                    push rax 
+                    """
+                
+                else:
+                    temp=f"""
+                    mov rax, [{c.children[1].children[len(c.children[1].children)-1-i]}]
+                    push rax 
+
+                    """
+                s=s+temp
+
+            return f"""
+                {s}
+                call {c.children[0].value}
+                add rsp, 8*{len(c.children[1].children)}
+                """
+        else:
+            s=""
+        return s
 
 def asm_bcom(bc):
     return "\n".join([asm_com(c) for c in bc.children])
@@ -457,6 +492,10 @@ def vars_com(c):
 
     elif c.data == "print":
         return vars_exp(c.children[0])
+    
+    elif c.data == "com_call":
+        L = set([v.value for v in c.children[1].children])
+        return L
 
 def vars_bcom(bc):
     S = set()
@@ -528,6 +567,9 @@ def pp_com(c, ntab = 0):
     
     elif c.data == "p_assignation":
         return f"{tabulation}{c.children[0].value} = {pp_exp(c.children[1])};"
+    
+    elif c.data == "com_call":
+        return f"{tabulation}{c.children[0].value} ({pp_varlist(c.children[1])});"
 
 def pp_bcom(bc, ntab = 0):
     return "\n".join([pp_com(c, ntab) for c in bc.children])
@@ -602,30 +644,19 @@ def pp_func(f, ntab = 0):
 
 
 ast = grammaire.parse("""
-class Vecteur{
-    Vecteur(f, s){
-        this.first = f;
-        this.second = s;
-    }
+printer(x){
+    print(x);
 }
 
-somme(a, b){
-    return a + b;
+main(a){
+    printer(a);
+    return printer(a);
 }
-
-main(A){
-    vec1 = Vecteur(12,20);
-    vec2 = Vecteur(vec1.first, 50);
-    final = somme(vec2.first, vec2.second);
-    return final;
-}
-
 """)
 
 
 print("\n")
 asm = asm_prg(ast)
-
 
 f = open("class4.asm", "w")
 
