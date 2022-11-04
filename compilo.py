@@ -501,10 +501,8 @@ def pp_exp(e, ntab = 0):
         return f"{e.children[0].value}({pp_varlist(e.children[1])})"
     elif e.data == "exp_opbin":
         return f"{tabulation}{pp_exp(e.children[0])} {e.children[1].value} {pp_exp(e.children[2])}"
-    elif e.data == "exp_appel_class":
-        return f"{e.children[0].value}({pp_varlist(e.children[1])})"
     elif e.data == "exp_call":
-        return f"{tabulation}{pp_name(e.children[0])}({pp_argsList(e.children[1])})"
+        return f"{e.children[0].value}({pp_varlist(e.children[1])})"
 
 
 def pp_com(c, ntab = 0):
