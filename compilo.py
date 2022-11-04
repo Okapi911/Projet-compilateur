@@ -105,6 +105,11 @@ def asm_exp(e):
                     mov rax, {v}
                     push rax
                     """
+                elif v.type == "PIDENTIFIER":
+                    E = f"""
+                    mov rax, [rbp - {give_address_attribute(v.value)}]
+                    push rax
+                    """
                 else:
                     E = f"""
                     mov rax, [{v}]
@@ -622,8 +627,7 @@ def pp_name(n):
 ast = grammaire.parse("""
 class Vecteur{
     Vecteur(f, s){
-        g = somme(f,s);
-        this.first = g;
+        this.first = f;
         this.second = s;
     }
 }
