@@ -629,7 +629,7 @@ print("\n")
 asm = asm_prg(ast)
 
 
-f = open("class4.asm", "w")
+f = open("ouf.asm", "w")
 
 f.write(asm)
 f.close()
