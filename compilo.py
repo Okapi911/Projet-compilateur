@@ -144,7 +144,10 @@ def asm_exp(e):
     pop rbx
     {op[e.children[1].value]} rax, rbx
         """
-
+    elif e.data == "exp_type":
+        return f"""
+    mov rax, {get_type(e.children[0])}    
+    """
     elif e.data == "exp_call":
 
         nom = e.children[0].value
@@ -504,10 +507,9 @@ listFunctions = []
 listClass = []
 
 typeObjects = {"SIGNED_NUMBER" : 0}
-typeReturnFunctions = {}
 typeVar = {}
 
-
+typeReturnFunctions = {}
 def vars_exp(e):
     if e.data == "exp_nombre":
         return set()
@@ -784,14 +786,14 @@ main(){
     p3 = Point(3, 7);
     r = Rectangle(p1, p2, p3, p4);
 
-    test = 3;
+    test = type(r);
 
     if (r.p1.x){
         b = somme(r.p4.y, 50);
     }else {
         b = aire(r);
     }
-    return b;
+    return test;
 }
 """)
 
@@ -799,6 +801,10 @@ print(pp_prg(ast))
 
 
 asm = asm_prg(ast)
+print()
+print(typeObjects)
+print(typeVar)
+print()
 
 f = open("ouf.asm", "w")
 
