@@ -170,7 +170,7 @@ main(x, y, z){
 }
 ```
 ## Faire fonctionner le compilateur
-#
+
 Pour faire fonctionner le compilateur, exécutez le programme python compilo.py avec votre code à l'intérieur. Éxécutez ensuite les commandes suivantes dans un terminal (ici, le fichier asm est appelé par défaut ouf.asm)
 
 - `nasm -f elf64 ouf.asm`

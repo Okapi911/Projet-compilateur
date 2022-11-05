@@ -644,13 +644,55 @@ def pp_func(f, ntab = 0):
 
 
 ast = grammaire.parse("""
-printer(x){
-    print(x);
+class Point{
+    Point(x, y){
+        this.x = x;
+        this.y = y;
+    }
 }
 
-main(a){
-    printer(a);
-    return printer(a);
+class Rectangle{
+    Rectangle(point1, point2, point3, point4){
+        this.p1 = point1;
+        this.p2 = point2;
+        this.p3 = point3;
+        this.p4 = point4;
+    }
+}
+
+perimetre(rectangle){
+    d1 = rectangle.p2.x - rectangle.p1.x;
+    d2 = rectangle.p4.y - rectangle.p1.y;
+    return (2*d1) + (2*d2);
+}
+
+aire(rectangle){
+    d1 = rectangle.p2.x - rectangle.p1.x;
+    d2 = rectangle.p4.y - rectangle.p1.y;
+    return d1*d2;
+}
+
+somme(a, b){
+    return a+b;
+}
+
+main(){
+    p1 = Point(0, 0);
+    p2 = Point(3, 0);
+    p3 = Point(2, 7);
+    p4 = Point(0, 7);
+
+    p3 = Point(3, 7);
+
+    r = Rectangle(p1, p2, p3, p4);
+
+    if (r.p1.x){
+        b = somme(r.p4.y, 50);
+    }else {
+        b = aire(r);
+    }
+
+    return b;
 }
 """)
 
