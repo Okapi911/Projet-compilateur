@@ -9,7 +9,7 @@ exp : SIGNED_NUMBER                                             -> exp_nombre
 | PIDENTIFIER                                                   -> exp_pvar
 | exp OPBIN exp                                                 -> exp_opbin
 | "(" exp ")"                                                   -> exp_par
-
+| "type("exp")"                                                 -> exp_type
 | NULL                                                          -> exp_null
 | IDENTIFIER "(" var_list ")"                                        -> exp_call
 
@@ -57,6 +57,31 @@ d = "}"
 
 op = {'+' : 'add', '-' : 'sub', '*' : 'imul', '/' : 'idiv'}
 
+def get_type(e):
+    if type(e) == lark.lexer.Token:
+        if e.type == "SIGNED_NUMBER":
+            return 0
+    else:
+        if e.data == "exp_nombre":
+            return 0
+        elif e.data == "exp_var":
+            return typeVar[e.children[0].value]
+        elif e.data == "exp_pvar":
+            return typeVar[e.children[0].value.split(".")[-1]]
+        elif e.data == "exp_par":
+            return get_type(e.children[0])
+        elif e.data == "exp_null":
+            return -1
+        elif e.data == "exp_opbin":
+            return get_type(e.children[0])
+        elif e.data == "exp_call":
+            if e.children[0].value in listClass:
+                return typeObjects[e.children[0]]
+            else:
+                return typeFunctions[e.children[0]]
+        elif e.data == "exp_type":
+            return 1
+
 def asm_pvar(e):
 
     if type(e) == lark.lexer.Token:
@@ -68,13 +93,14 @@ def asm_pvar(e):
     size_pvar = len(att_pvar)
 
     if "this" in nom:
+        print(nom)
+
         attribut = nom.split(".")[1]
         nomClass = find_cls(attribut)
         decalage = len(attributs[nomClass]) - attributs[nomClass].index(nom) - 1
         return f"""    mov rax, [rax + {8 * decalage}]"""
 
     else:
-
         debut = f"""{att_pvar[0]}"""
 
         s = f"""
@@ -118,7 +144,10 @@ def asm_exp(e):
     pop rbx
     {op[e.children[1].value]} rax, rbx
         """
-
+    elif e.data == "exp_type":
+        return f"""
+    mov rax, {get_type(e.children[0])}    
+    """
     elif e.data == "exp_call":
 
         nom = e.children[0].value
@@ -131,7 +160,10 @@ def asm_exp(e):
                 lea rax, [rbp - {objectsCreated[-1][1]}]
                 mov rdi, rax
                 """
+            arg= 0
             for v in reversed(e.children[1].children):
+                arg += 1
+
                 if v.type == "SIGNED_NUMBER":
 
                     E = f"""
@@ -195,9 +227,14 @@ def asm_com(c):
 
     if c.data == "assignation":
         if c.children[1].data == "exp_call":
+
+
             if(c.children[1].children[0] in listClass):
+                typeVar[c.children[0].value] = get_type(c.children[1])
+
                 place = find_place(c.children[1].children[0])
                 objectsCreated.append((c.children[0].value, place))
+
                 return f"""
     lea r9, [rbp - {objectsCreated[-1][1]}]
     mov [{objectsCreated[-1][0]}], r9
@@ -221,6 +258,7 @@ def asm_com(c):
         E1 = asm_exp(c.children[1])
 
         if "this" in c.children[0].value:
+
 
             attribut = c.children[0].value.split(".")[1]
             nomClass = find_cls(attribut)
@@ -432,6 +470,7 @@ def asm_prg(p):
     s = ""
     for i in range(len(p.children[2].children)):
         v = p.children[2].children[i].value
+        typeVar[v] = 0
         e = f"""
     mov rbx, [argv]
     mov rdi, [rbx + {8*(i+1)}]
@@ -445,23 +484,32 @@ def asm_prg(p):
     CLS = asm_bcls(p.children[0])
     moule = moule.replace("DECL_CLS", CLS)
 
+    f=f"""{asm_bfunc(p.children[1])}"""
+    moule = moule.replace("FUNC", f)
+
     C = asm_bcom(p.children[3])
     moule = moule.replace("BODY", C)
 
     E = asm_exp(p.children[4])
     moule = moule.replace("RETURN", E)
 
-    f=f"""{asm_bfunc(p.children[1])}"""
-    moule = moule.replace("FUNC", f)
+
     return moule
 
 varsPerClass = {}
 attributs = {}
+argument_constructeur = {}
+
 sizePerClass = {}
 objectsCreated = []
+
 listFunctions = []
 listClass = []
 
+typeObjects = {"SIGNED_NUMBER" : 0}
+typeVar = {}
+
+typeReturnFunctions = {}
 def vars_exp(e):
     if e.data == "exp_nombre":
         return set()
@@ -479,12 +527,18 @@ def vars_exp(e):
     elif e.data == "exp_call":
         L = set([t.value for t in e.children[1].children if not "." in t and t.type != "SIGNED_NUMBER"])
         return L
+    elif e.data == "exp_type":
+        return vars_exp(e.children[0])
         
     
 def vars_cls(cls):
     listClass.append(cls.children[0].value)
+    typeObjects[cls.children[0].value] = len(typeObjects.keys())
 
-    VL = set([t.value for t in cls.children[2].children])
+    L = [t.value for t in cls.children[2].children]
+    argument_constructeur[cls.children[0].value] = L
+
+    VL = set(L)
     BC = vars_bcom(cls.children[3])
 
     varsPerClass[cls.children[0].value] = VL | BC
@@ -593,6 +647,8 @@ def pp_exp(e, ntab = 0):
         return f"{tabulation}{pp_exp(e.children[0])} {e.children[1].value} {pp_exp(e.children[2])}"
     elif e.data == "exp_call":
         return f"{e.children[0].value}({pp_varlist(e.children[1])})"
+    elif e.data == "exp_type":
+        return f"type({pp_exp(e.children[0])})"
 
 
 def pp_com(c, ntab = 0):
@@ -696,9 +752,9 @@ def pp_func(f, ntab = 0):
 
 ast = grammaire.parse("""
 class Point{
-    Point(x, y){
-        this.x = x;
-        this.y = y;
+    Point(coord1, coord2){
+        this.x = coord1;
+        this.y = coord2;
     }
 }
 class Rectangle{
@@ -729,16 +785,27 @@ main(){
     p4 = Point(0, 7);
     p3 = Point(3, 7);
     r = Rectangle(p1, p2, p3, p4);
+
+    typeObjetR = type(r);
+
     if (r.p1.x){
         b = somme(r.p4.y, 50);
     }else {
         b = aire(r);
     }
+
     return b;
 }
 """)
 
+print(pp_prg(ast))
+
+
 asm = asm_prg(ast)
+print()
+print(typeObjects)
+print(typeVar)
+print()
 
 f = open("ouf.asm", "w")
 
