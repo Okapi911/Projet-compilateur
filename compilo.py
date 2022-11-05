@@ -786,14 +786,15 @@ main(){
     p3 = Point(3, 7);
     r = Rectangle(p1, p2, p3, p4);
 
-    test = type(r);
+    typeObjetR = type(r);
 
     if (r.p1.x){
         b = somme(r.p4.y, 50);
     }else {
         b = aire(r);
     }
-    return test;
+
+    return b;
 }
 """)
 
