@@ -123,6 +123,19 @@ main(){
 }
 ```
 
+- Obtenir le type d'un objet par la fonction type (ne fonctionne pas sur les attributs)
+
+```c++
+main(){
+
+    arbre1 = Arbre(Null, 10, Null);
+    
+    b = type(arbre1);
+
+    return b;
+}
+```
+
 ## Ce que vous devez faire
 
 
