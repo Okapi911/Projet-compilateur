@@ -545,7 +545,7 @@ def vars_com(c):
         return vars_exp(c.children[0])
     
     elif c.data == "com_call":
-        L = set([v.value for v in c.children[1].children])
+        L = set([v.value for v in c.children[1].children if not "." in v and v.type != "SIGNED_NUMBER"])
         return L
 
 def vars_bcom(bc):
