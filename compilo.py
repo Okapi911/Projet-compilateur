@@ -828,7 +828,6 @@ def find_place(cls):
     else:
         return objectsCreated[-1][1] + sizePerClass[cls]
 
-#element de la forme aaa.bbb
 """
 Given the full name of a variable's attribute, finds the stack
 position of the attribute for this specific variable.
