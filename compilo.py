@@ -153,7 +153,6 @@ def asm_pvar(e):
             s = s+e
         return s
 
-
 """
 This function produces the code in Assembly associated to the expression used as a parameter.
 Compared to the most basics compilers, additional expressions can be used in the code : on 
