@@ -3,6 +3,21 @@ from logging.handlers import SYSLOG_UDP_PORT
 from tokenize import Token
 import lark
 
+"""
+Here you can find the specified grammar of the compiler.
+Starting with the largest scale, a program is defined as follows :
+a series of class declarations, then all functions declaration and
+eventually the specific function called main which needs to return
+an expression though NULL can be one if needed.
+A class can be identified with the keyword class followed by its name.
+Each class must have a unique instance-maker which will rely on Java 
+inspired syntaxis (namely with the word this).
+A function is identified by its name, a list of variables as arguments
+and a series of commands that may or may not include a return.
+With the implementation of functions and classes, additional commands
+were added, namely Passignation to change the value of a class
+parameter of a fixed instance and function calls.
+"""
 grammaire = lark.Lark(r"""
 exp : SIGNED_NUMBER                                             -> exp_nombre
 | IDENTIFIER                                                    -> exp_var
@@ -11,7 +26,7 @@ exp : SIGNED_NUMBER                                             -> exp_nombre
 | "(" exp ")"                                                   -> exp_par
 | "type("exp")"                                                 -> exp_type
 | NULL                                                          -> exp_null
-| IDENTIFIER "(" var_list ")"                                        -> exp_call
+| IDENTIFIER "(" var_list ")"                                   -> exp_call
 
 
 com : IDENTIFIER "=" exp ";"                                    -> assignation
@@ -28,13 +43,13 @@ bcls : (cls)*
 
 prg : bcls bfunc "main" "(" var_list ")" "{" bcom  "return" exp ";" "}"
 
-cls : "class" IDENTIFIER "{" IDENTIFIER "(" var_list ")" "{" bcom "}" "}"                   -> declaration_class
+cls : "class" IDENTIFIER "{" IDENTIFIER "(" var_list ")" "{" bcom "}" "}"                         -> declaration_class
 
 func : IDENTIFIER "(" var_list ")" "{" bcom ("return" exp ";")? "}"
 
 bfunc : (func)*
 
-var_list :                                                      -> vide
+var_list :                                                                                        -> vide
 | (IDENTIFIER|PIDENTIFIER|SIGNED_NUMBER) ("," (IDENTIFIER|PIDENTIFIER|SIGNED_NUMBER))*            -> aumoinsune
 
 PIDENTIFIER : (/[a-zA-Z][a-zA-Z0-9]*/".")+ /[a-zA-Z][a-zA-Z0-9]*/
@@ -55,8 +70,15 @@ tab = "    "
 g = "{"
 d = "}"
 
+"""Here lies the list of binary operators the user can use without redefining them with functions."""
 op = {'+' : 'add', '-' : 'sub', '*' : 'imul', '/' : 'idiv'}
 
+"""
+As part of the implementation of dynamic typing, the type of an object can be accessed with this getter.
+Initially the sole class known by the compiler without code input is integers, however this program is
+able to refer to new types corresponding to classes written by the user.
+To prevent errors, the type of a type expression has been fixed to 1.
+"""
 def get_type(e):
     if type(e) == lark.lexer.Token:
         if e.type == "SIGNED_NUMBER":
@@ -82,6 +104,18 @@ def get_type(e):
         elif e.data == "exp_type":
             return 1
 
+"""
+This function is used to make the code in assembly which allows
+access to the value of a class parameter.
+Class constructors are identified by the syntax this. which allows for
+a more efficient action. Though in any case at the cost of a linear
+complexity on the number of . in the parameter proper referencement can
+be achieved in Assembly.
+In order to do so, this function uses dictionaries to link a parameter to its
+associated class then to its position for an instance of the class. The "decalage"
+keyword represents the relative positioning of a fixed parameter compared to the 
+adress of the object at hand.
+"""
 def asm_pvar(e):
 
     if type(e) == lark.lexer.Token:
@@ -93,22 +127,23 @@ def asm_pvar(e):
     size_pvar = len(att_pvar)
 
     if "this" in nom:
-        print(nom)
-
+        #Access to this.param value in a class instantiator
         attribut = nom.split(".")[1]
         nomClass = find_cls(attribut)
         decalage = len(attributs[nomClass]) - attributs[nomClass].index(nom) - 1
         return f"""    mov rax, [rax + {8 * decalage}]"""
 
     else:
+        #Access to var.param.param2.(...).paramN value 
         debut = f"""{att_pvar[0]}"""
 
         s = f"""
             mov rax, [{debut}]
-        """
+            """
 
         for i in range(1, size_pvar):
-
+            #With each iteration, the program proceeds to move to rax the position of the next parameter,
+            #From which the position of the following one can then be reached.
             classe = find_cls(att_pvar[i])
             decalage = len(attributs[classe]) - attributs[classe].index(f"""this.{att_pvar[i]}""") - 1
             e = f"""
@@ -118,6 +153,15 @@ def asm_pvar(e):
             s = s+e
         return s
 
+
+"""
+This function produces the code in Assembly associated to the expression used as a parameter.
+Compared to the most basics compilers, additional expressions can be used in the code : on 
+the one hand pvar and type expressions to access respectively parameters or types, and
+on the other hand call expressions to use other functions notably for assignment. The formers 
+move to rax the correct value using other functions while the latter allows the instanciation
+of a class or the use of functions other than main.
+"""
 def asm_exp(e):
     
     if e.data == "exp_nombre":
@@ -129,6 +173,7 @@ def asm_exp(e):
     mov rax, [{e.children[0].value}]"""
     
     elif e.data == "exp_pvar":
+        #Access to the value of a parameter for assignment or user information
         return asm_pvar(e)
 
     elif e.data == "exp_par":
@@ -145,14 +190,18 @@ def asm_exp(e):
     {op[e.children[1].value]} rax, rbx
         """
     elif e.data == "exp_type":
+        #Access to the type of an expression
         return f"""
     mov rax, {get_type(e.children[0])}    
     """
     elif e.data == "exp_call":
+        #Proceedings for function calls or object making 
 
         nom = e.children[0].value
 
         if nom in listClass:
+            #How to create an instance of a class
+            # 1- Update dictionaries and position
             s = f"""
                 sub rsp, {sizePerClass[e.children[0].value]}
 
@@ -162,6 +211,7 @@ def asm_exp(e):
                 """
             arg= 0
             for v in reversed(e.children[1].children):
+                # 2- Assigns to the parameters of the instance maker the values used for the call
                 arg += 1
 
                 if v.type == "SIGNED_NUMBER":
@@ -186,8 +236,10 @@ def asm_exp(e):
             return s
 
         elif nom in listFunctions :
+            #How to deal with function calls
             s=""
             for i in range(len(e.children[1].children)):
+                # 1- Update rax with the values of the parameters used for the call
                 if(e.children[1].children[len(e.children[1].children)-1-i].type == "SIGNED_NUMBER"):
                     temp=f"""
                     mov rax, {e.children[1].children[len(e.children[1].children)-1-i]}
@@ -209,6 +261,7 @@ def asm_exp(e):
                     """
                 s=s+temp
 
+            # 2- Operate the call of the right function and update rsp with the new amount of variables
             return f"""
                 {s}
                 call {e.children[0].value}
@@ -222,14 +275,25 @@ def next():
     cpt += 1
     return cpt
 
-
+"""
+This function produces the code in Assembly associated to the command used as a parameter.
+Additional commands added in this compiler are : assignment with a call, parameters assignments,
+void function calls and improved if/else syntaxis.
+Compared to a basic compiler, assignment are slightly different since the typing must be updated and
+with class parameters there is also the notion of avalaible space for new varibles to deal with.
+Void function calls work as you would expect, since there are no returns only prints and changes to existing
+objects in main can be done. Regarding parameter assignments a filter checks if the instance is being created
+or is modified later on. This way the system knows if it must allocate new space for the parameter or simply
+update it.
+"""
 def asm_com(c):
 
     if c.data == "assignation":
         if c.children[1].data == "exp_call":
-
+            #Assignment with a call on the right part
 
             if(c.children[1].children[0] in listClass):
+                #Here the call is meant to create an instance of a class
                 typeVar[c.children[0].value] = get_type(c.children[1])
 
                 place = find_place(c.children[1].children[0])
@@ -242,12 +306,14 @@ def asm_com(c):
     call {c.children[1].children[0]}
                 """
             else:
+                #Here the call is simply a function call
                 E1 = asm_exp(c.children[1])
                 return f"""
     {E1}
     mov [{c.children[0].value}], rax 
                 """
         else:
+            #Standard Assignments
             E1 = asm_exp(c.children[1])
             return f"""
     {E1}
@@ -258,7 +324,7 @@ def asm_com(c):
         E1 = asm_exp(c.children[1])
 
         if "this" in c.children[0].value:
-
+            #Assignments playing a part in creating a new object
 
             attribut = c.children[0].value.split(".")[1]
             nomClass = find_cls(attribut)
@@ -272,6 +338,7 @@ def asm_com(c):
     mov [rax + {8 * decalage}], rdx 
             """
         else:
+            #Assignments made to modify already existing attributes
             return f"""
     {E1}
     mov [rbp - {give_address_attribute(c.children[0])}], rax 
@@ -328,10 +395,12 @@ def asm_com(c):
         """
     
     elif c.data == "com_call":
+        #Calling a void type function is a command rather than an expression
         nom = c.children[0]
         if nom in listFunctions :
             s=""
             for i in range(len(c.children[1].children)):
+                #parameters for a call are treated accordingly to their typing in the grammar
                 if(c.children[1].children[len(c.children[1].children)-1-i].type == "SIGNED_NUMBER"):
                     temp=f"""
                     mov rax, {c.children[1].children[len(c.children[1].children)-1-i]}
@@ -358,14 +427,24 @@ def asm_com(c):
                 add rsp, 8*{len(c.children[1].children)}
                 """
         else:
+            #calls to functions that were not declared are simply ignored
             s=""
         return s
 
+"""
+The assembly code associated to multiple commands is hereby defined as a series of
+assembly codes for each command separated by line breaks. 
+"""
 def asm_bcom(bc):
     return "\n".join([asm_com(c) for c in bc.children])
 
+"""
+In order to create a class, the constructor must be declared similarly to a function,
+with the bloc being defined with classname: and proper indentation, but also with 
+parameters to put in position then commands to convert to assembly.
+"""
 def asm_cls(cls):
-
+    #Declaration of all parameters
     s = f""""""
 
     for i in range(len(cls.children[2].children)):
@@ -375,12 +454,12 @@ def asm_cls(cls):
     mov [{v}], rax
         """
         s = s + e
-
+    #Separator between arguments and commands for the constructor
     s = s + f"""
     mov [rbp-8], rdi
     sub rsp, 16
         """
-
+    #Creation of the complete class field in assembly
     return f"""
 {cls.children[0]} :
     push rbp
@@ -394,13 +473,21 @@ def asm_cls(cls):
     pop rbp
     ret
     """
-    
+
+"""
+In order to create a function, the same tools used for creating classes are applied,
+with the bloc being defined with functionName: and proper indentation, but also with 
+parameters to put in position then commands to convert to assembly. However unlike
+classes, functions may have a return command that needs a special syntax.
+"""    
 def asm_func(f):
     C = asm_bcom(f.children[2])
     nbre_child=len(f.children)
     if nbre_child==4:
+        #Here the code deals with functions which return something
         E = asm_exp(f.children[3])
         s = ""
+        #First all arguments are stockpiled in memory
         for i in range(len(f.children[1].children)):
             v = f.children[1].children[i].value
             e = f"""
@@ -408,6 +495,7 @@ def asm_func(f):
     mov [{v}], rax
         """
             s = s + e
+        #Then the complete field can be written at once
         return f"""
 {f.children[0].value}:
     push rbp
@@ -428,6 +516,7 @@ def asm_func(f):
     ret
     """
     else:
+        #Case of a void type function (no return function)
         s = ""
         for i in range(len(f.children[1].children)):
             v = f.children[1].children[i].value
@@ -454,12 +543,28 @@ def asm_func(f):
     ret
     """
 
+"""
+The assembly code associated to multiple functions is hereby defined as a series of
+assembly codes for each function separated by line breaks. 
+"""
 def asm_bfunc(bf):
     return "\n".join([asm_func(f) for f in bf.children])
 
+"""
+The assembly code associated to multiple classes is hereby defined as a series of
+assembly codes for each class separated by line breaks. 
+"""
 def asm_bcls(bcls):
     return "\n".join([asm_cls(c) for c in bcls.children])
 
+"""
+The assembly code for the complete program written by the user is tackled here in the first place,
+where it is divided between classes, functions and the "main" field accordingly to the grammar.
+However the assembly code written by this function isn't enough to have working codes in a terminal.
+Indeed this compiler is paired up with a file called moule.asm in assembly playing the part of a
+sarcophagus where the place of each element is already defined. This function thus replaces the 
+positioning keywords used in the mold with the correct assembly code. 
+"""
 def asm_prg(p):
     f = open("moule.asm")
     moule = f.read()
@@ -530,7 +635,13 @@ def vars_exp(e):
     elif e.data == "exp_type":
         return vars_exp(e.children[0])
         
-    
+"""
+This function updates the list of both declared classes and attributes.
+It increases as needed the size allowed to instances of a specific class. 
+It also creates a new type for the declared class.
+Similarly to all "vars" functions, it is also used to take notice of every
+variable declared in the script.
+"""
 def vars_cls(cls):
     listClass.append(cls.children[0].value)
     typeObjects[cls.children[0].value] = len(typeObjects.keys())
@@ -700,12 +811,17 @@ def pp_prg(p):
     else:
         return f"{pp_bcls(p.children[0])} \n\n{pp_bfunc(p.children[1])} \n\nmain ({pp_varlist(p.children[2])}) {g} \n    return {pp_exp(p.children[4])}; \n{d}"
 
+"""
+Given an attribute of a variable, this function is able to return the class
+from which this attribute was originally derived of.
+"""
 def find_cls(attribut):
     nom = f"""this.{attribut}"""
     for cls in attributs:
         if nom in attributs[cls]:
             return cls
 
+"""Allows the correct placement in memory of the attributes of a new instance for a specific  class"""
 def find_place(cls):
     if len(objectsCreated) == 0:
         return sizePerClass[cls]
@@ -713,6 +829,10 @@ def find_place(cls):
         return objectsCreated[-1][1] + sizePerClass[cls]
 
 #element de la forme aaa.bbb
+"""
+Given the full name of a variable's attribute, finds the stack
+position of the attribute for this specific variable.
+"""
 def give_address_attribute(element):
 
     objet = element.split(".")[0]
@@ -749,7 +869,7 @@ def pp_func(f, ntab = 0):
         else:
             return f"{f.children[0]} ({pp_varlist(f.children[1])}) {g} \n{tabulation}{tab}return {pp_exp(f.children[3])}; \n{tabulation}{d}"
 
-
+#Use this syntax to create your own code to shift in assembly
 ast = grammaire.parse("""
 class Point{
     Point(coord1, coord2){
@@ -797,17 +917,17 @@ main(){
     return b;
 }
 """)
-
+#Prints your code in the KBT language with proper pep8 indentation
 print(pp_prg(ast))
 
-
+#Converts a string of code written in the KBT language in assembly
 asm = asm_prg(ast)
 print()
 print(typeObjects)
 print(typeVar)
 print()
 
+#With the three following commands, create your own files in assembly
 f = open("ouf.asm", "w")
-
 f.write(asm)
 f.close()
