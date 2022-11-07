@@ -44,6 +44,28 @@ main(){
 }
 ```
 
+- Ecrire des fonctions récursives (exemple de la factorielle ci-dessous).
+
+```c++
+fact(n){
+    if(n-1){         // cas n-1 > 0 soit n > 1
+        c=n;         // on garde la valeur de n
+        n=n-1;       // on décrémente n
+        b=b*c;       // (b est initialisé à 1 (b : dq 1))
+        b=fact(n);   // on calcule fact(n-1)
+    }
+    else{            // cas n-1 = 0 soit n = 1
+        b=1*b;
+    }
+    return b;
+}
+
+main(i){
+    return fact(i);
+}
+```
+
+
 - Créer une classe avec un constructeur et définir des attributs.
 
 ```c++

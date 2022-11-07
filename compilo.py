@@ -868,20 +868,47 @@ def pp_func(f, ntab = 0):
 
 #Use this syntax to create your own code to shift in assembly
 ast = grammaire.parse("""
-f(n){
-    if(n-1){
-        c=n;
-        n=n-1;
-        b=b*c;
-        b=f(n);
+class Point{
+    Point(coord1, coord2){
+        this.x = coord1;
+        this.y = coord2;
     }
-    else{
-        b=1*b;
+}
+class Rectangle{
+    Rectangle(point1, point2, point3, point4){
+        this.p1 = point1;
+        this.p2 = point2;
+        this.p3 = point3;
+        this.p4 = point4;
+    }
+}
+perimetre(rectangle){
+    d1 = rectangle.p2.x - rectangle.p1.x;
+    d2 = rectangle.p4.y - rectangle.p1.y;
+    return (2*d1) + (2*d2);
+}
+aire(rectangle){
+    d1 = rectangle.p2.x - rectangle.p1.x;
+    d2 = rectangle.p4.y - rectangle.p1.y;
+    return d1*d2;
+}
+somme(a, b){
+    return a+b;
+}
+main(){
+    p1 = Point(0, 0);
+    p2 = Point(3, 0);
+    p3 = Point(2, 7);
+    p4 = Point(0, 7);
+    p3 = Point(3, 7);
+    r = Rectangle(p1, p2, p3, p4);
+    typeObjetR = type(r);
+    if (r.p1.x){
+        b = somme(r.p4.y, 50);
+    }else {
+        b = aire(r);
     }
     return b;
-}
-main(i){
-    return f(i);
 }
 """)
 #Prints your code in the KBT language with proper pep8 indentation
