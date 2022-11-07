@@ -173,6 +173,7 @@ main(){
 ## Ce que vous ne devez/pouvez pas faire
 
 - Ne pas créer des classes différentes avec des attributs en communs.
+- Ne pas utiliser d'entier en argument dans la déclaration de fonction.
 - Ne pas instancier d'objets en dehors de la fonction main.
 - Ne pas utiliser d'expressions comme arguments d'un(e) fonction / constructeur de classe.
 ```c++
